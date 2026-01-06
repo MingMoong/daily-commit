@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Tailwind CSS: 모바일 퍼스트 디자인 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+      /* 화면 전환 애니메이션 */
+      .fade-in { animation: fadeIn 0.3s ease-out; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+      
+      /* 사이드바 애니메이션 */
+      .sidebar-transition { transition: transform 0.3s ease-in-out; }
+      .sidebar-closed { transform: translateX(-100%); }
+      .sidebar-open { transform: translateX(0); }
+
+      /* 로딩 스피너 */
+      .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- 1. 헤더 (고정) -->
+    <header class="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 shadow-sm z-20 flex-shrink-0">
+      <!-- 좌측: 메뉴 버튼 + 타이틀 -->
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleSidebar()" class="text-gray-600 hover:text-blue-600 active:scale-95 transition-transform p-1">
+          <span class="material-icons text-2xl">menu</span>
+        </button>
+        <h1 class="text-lg font-bold text-gray-800 tracking-tight">Woondooran ERP</h1>
+      </div>
+
+      <!-- 우측: 회사명 -->
+      <div class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100" id="header-company-name">
+        Loading...
+      </div>
+    </header>
+
+    <!-- 2. 메인 콘텐츠 영역 (스크롤 가능) -->
+    <main class="flex-grow overflow-y-auto relative p-4" id="main-content">
+      
+      <!-- 대시보드 (기본 화면) -->
+      <div id="view-dashboard" class="view-section fade-in space-y-4">
+        <div class="bg-blue-600 text-white p-6 rounded-2xl shadow-lg">
+          <h2 class="text-2xl font-bold mb-1">Welcome</h2>
+          <p class="text-blue-100 text-sm">ERP 시스템에 오신 것을 환영합니다.</p>
+          <div class="mt-4 flex items-center text-xs bg-blue-700 bg-opacity-50 w-fit px-3 py-1 rounded-full">
+            <span class="material-icons text-sm mr-1">check_circle</span>
+            시스템 정상 가동 중
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+           <button onclick="navigateTo('view-materials')" class="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center justify-center space-y-2 active:bg-gray-50">
+             <span class="material-icons text-orange-500">inventory_2</span>
+             <span class="text-xs font-bold text-gray-600">원재료</span>
+           </button>
+           <button onclick="navigateTo('view-production')" class="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center justify-center space-y-2 active:bg-gray-50">
+             <span class="material-icons text-blue-500">factory</span>
+             <span class="text-xs font-bold text-gray-600">생산</span>
+           </button>
+        </div>
+      </div>
+
+      <!-- [수정됨] 원재료수불부 화면 -->
+      <div id="view-materials" class="view-section hidden fade-in pb-20"> <!-- FAB 공간 확보를 위해 padding-bottom 추가 -->
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold flex items-center">
+            <span class="material-icons text-orange-500 mr-2">inventory_2</span> 원재료수불부
+          </h2>
+          <button onclick="loadMaterials()" class="text-gray-400 hover:text-blue-600">
+            <span class="material-icons">refresh</span>
+          </button>
+        </div>
+
+        <!-- 데이터 목록이 표시될 곳 -->
+        <div id="material-list" class="space-y-3">
+          <!-- 로딩 중 표시 -->
+          <div class="text-center py-10 text-gray-400">
+            <div class="loader mx-auto mb-2"></div>
+            <p class="text-xs">데이터를 불러오는 중...</p>
+          </div>
+        </div>
+
+        <!-- 글쓰기 버튼 (Floating Action Button) -->
+        <button onclick="openModal('modal-material')" class="fixed bottom-6 right-6 bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-full shadow-lg transition-transform active:scale-90 flex items-center justify-center z-10">
+          <span class="material-icons">add</span>
+        </button>
+      </div>
+
+      <!-- 생산일지 화면 -->
+      <div id="view-production" class="view-section hidden fade-in">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+          <span class="material-icons text-blue-500 mr-2">factory</span> 생산일지
+        </h2>
+        <div class="bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-400">
+          <span class="material-icons text-4xl mb-2">construction</span>
+          <p>일일 생산 실적 기록 화면입니다.</p>
+        </div>
+      </div>
+
+      <!-- 반제품수불부 화면 -->
+      <div id="view-semi" class="view-section hidden fade-in">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+          <span class="material-icons text-purple-500 mr-2">category</span> 반제품수불부
+        </h2>
+        <div class="bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-400">
+          <span class="material-icons text-4xl mb-2">construction</span>
+          <p>반제품 재고 관리 화면입니다.</p>
+        </div>
+      </div>
+
+      <!-- 포장일지 화면 -->
+      <div id="view-packaging" class="view-section hidden fade-in">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+          <span class="material-icons text-green-500 mr-2">inventory</span> 포장일지
+        </h2>
+        <div class="bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-400">
+          <span class="material-icons text-4xl mb-2">construction</span>
+          <p>포장 작업 기록 화면입니다.</p>
+        </div>
+      </div>
+
+      <!-- 설정 화면 -->
+      <div id="view-settings" class="view-section hidden fade-in">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+          <span class="material-icons text-gray-500 mr-2">settings</span> 설정
+        </h2>
+        <div class="bg-white p-4 rounded-xl border shadow-sm space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label>
+            <div class="text-sm font-semibold">v1.0.0 (Vibe Edition)</div>
+          </div>
+          <div class="h-px bg-gray-100"></div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">사용자 계정</label>
+            <div id="setting-email" class="text-sm text-gray-600">loading...</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- [신규] 원재료 등록 모달 (Modal) -->
+    <div id="modal-material" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+      <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 fade-in shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-gray-800">원재료 등록</h3>
+          <button onclick="closeModal('modal-material')" class="text-gray-400 hover:text-gray-600">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        
+        <form id="form-material" onsubmit="submitMaterial(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">날짜</label>
+            <input type="date" name="date" required class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+          </div>
+          
+          <div class="flex space-x-2">
+            <div class="w-2/3">
+              <label class="block text-xs font-bold text-gray-500 mb-1">품목명</label>
+              <input type="text" name="item" placeholder="예: 밀가루" required class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+            </div>
+            <div class="w-1/3">
+               <label class="block text-xs font-bold text-gray-500 mb-1">구분</label>
+               <select name="type" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-orange-500 outline-none">
+                 <option value="입고">입고</option>
+                 <option value="출고">출고</option>
+               </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">수량</label>
+            <input type="number" name="qty" placeholder="0" required class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">비고 (선택)</label>
+            <input type="text" name="memo" placeholder="메모 입력" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none">
+          </div>
+
+          <button type="submit" id="btn-save-material" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-colors shadow-md mt-2 flex justify-center items-center">
+            저장하기
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 3. 사이드바 (Navigation Drawer) -->
+    <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden transition-opacity"></div>
+    <nav id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-40 sidebar-transition sidebar-closed flex flex-col">
+      <div class="p-6 border-b border-gray-100 bg-gray-50">
+        <h2 class="text-xl font-bold text-gray-800">Menu</h2>
+        <p class="text-xs text-gray-500 mt-1">ERP Navigation</p>
+      </div>
+      <div class="flex-grow py-4 space-y-1 overflow-y-auto">
+        <a href="#" onclick="navigateTo('view-dashboard')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+          <span class="material-icons text-gray-400 mr-3 text-xl">dashboard</span>
+          <span class="font-medium">대시보드</span>
+        </a>
+        <a href="#" onclick="navigateTo('view-materials')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+          <span class="material-icons text-gray-400 mr-3 text-xl">inventory_2</span>
+          <span class="font-medium">원재료수불부</span>
+        </a>
+        <a href="#" onclick="navigateTo('view-production')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+          <span class="material-icons text-gray-400 mr-3 text-xl">factory</span>
+          <span class="font-medium">생산일지</span>
+        </a>
+        <a href="#" onclick="navigateTo('view-semi')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+          <span class="material-icons text-gray-400 mr-3 text-xl">category</span>
+          <span class="font-medium">반제품수불부</span>
+        </a>
+        <a href="#" onclick="navigateTo('view-packaging')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+          <span class="material-icons text-gray-400 mr-3 text-xl">inventory</span>
+          <span class="font-medium">포장일지</span>
+        </a>
+        <div class="h-px bg-gray-100 my-2 mx-6"></div>
+        <a href="#" onclick="navigateTo('view-settings')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+          <span class="material-icons text-gray-400 mr-3 text-xl">settings</span>
+          <span class="font-medium">설정</span>
+        </a>
+      </div>
+      <div class="p-4 text-xs text-center text-gray-400 border-t border-gray-100">&copy; Woondooran ERP</div>
+    </nav>
+
+    <!-- JavaScript 로직 -->
+    <script>
+      /**
+       * 앱 초기화
+       */
+      window.onload = function() {
+        google.script.run
+          .withSuccessHandler(initApp)
+          .withFailureHandler(console.error)
+          .getInitialData();
+          
+        // 오늘 날짜를 기본값으로 설정
+        document.querySelector('input[name="date"]').valueAsDate = new Date();
+      };
+
+      function initApp(data) {
+        document.getElementById('header-company-name').innerText = data.companyName;
+        document.getElementById('setting-email').innerText = data.currentUser;
+      }
+
+      /**
+       * 사이드바 제어
+       */
+      function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const isClosed = sidebar.classList.contains('sidebar-closed');
+
+        if (isClosed) {
+          sidebar.classList.remove('sidebar-closed');
+          sidebar.classList.add('sidebar-open');
+          overlay.classList.remove('hidden');
+        } else {
+          closeSidebar();
+        }
+      }
+
+      function closeSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.remove('sidebar-open');
+        sidebar.classList.add('sidebar-closed');
+        overlay.classList.add('hidden');
+      }
+
+      /**
+       * 화면 네비게이션
+       */
+      function navigateTo(viewId) {
+        // 모든 뷰 숨기기
+        document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
+        
+        // 선택된 뷰 보이기
+        const target = document.getElementById(viewId);
+        if (target) {
+          target.classList.remove('hidden');
+          
+          // 만약 원재료 화면이면 데이터 불러오기
+          if (viewId === 'view-materials') {
+            loadMaterials();
+          }
+        }
+        closeSidebar();
+      }
+
+      /**
+       * [원재료] 데이터 불러오기 (서버 호출)
+       */
+      function loadMaterials() {
+        const listEl = document.getElementById('material-list');
+        listEl.innerHTML = `
+          <div class="text-center py-10 text-gray-400">
+            <div class="loader mx-auto mb-2"></div>
+            <p class="text-xs">데이터 불러오는 중...</p>
+          </div>`;
+
+        google.script.run
+          .withSuccessHandler(renderMaterials)
+          .withFailureHandler(error => {
+            listEl.innerHTML = `<div class="text-red-500 text-center text-sm">에러 발생: ${error.message}</div>`;
+          })
+          .getMaterials();
+      }
+
+      /**
+       * [원재료] 데이터 화면 그리기
+       */
+      function renderMaterials(data) {
+        const listEl = document.getElementById('material-list');
+        
+        if (!data || data.length === 0) {
+          listEl.innerHTML = `
+            <div class="text-center py-10 text-gray-300 border border-dashed rounded-xl">
+              <span class="material-icons text-4xl mb-2">inbox</span>
+              <p class="text-sm">데이터가 없습니다.</p>
+              <p class="text-xs mt-1">우측 하단 + 버튼을 눌러 등록하세요.</p>
+            </div>`;
+          return;
+        }
+
+        let html = '';
+        data.forEach(item => {
+          // 입고는 파란색, 출고는 빨간색 스타일
+          const isInput = item.type === '입고';
+          const typeClass = isInput ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600';
+          const qtySign = isInput ? '+' : '-';
+
+          html += `
+            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center active:bg-gray-50">
+              <div>
+                <div class="text-xs text-gray-400 mb-1">${item.date}</div>
+                <div class="font-bold text-gray-800 text-lg">${item.item}</div>
+                <div class="text-xs text-gray-500">${item.memo || '-'}</div>
+              </div>
+              <div class="text-right">
+                <span class="text-xs font-bold px-2 py-1 rounded ${typeClass} mb-1 inline-block">${item.type}</span>
+                <div class="font-bold text-gray-700 text-lg">${qtySign}${item.qty}</div>
+              </div>
+            </div>
+          `;
+        });
+
+        listEl.innerHTML = html;
+      }
+
+      /**
+       * 모달 열기/닫기
+       */
+      function openModal(modalId) {
+        document.getElementById(modalId).classList.remove('hidden');
+      }
+
+      function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+      }
+
+      /**
+       * [원재료] 데이터 저장 (Form Submit)
+       */
+      function submitMaterial(e) {
+        e.preventDefault(); // 새로고침 방지
+        const btn = document.getElementById('btn-save-material');
+        const originalText = btn.innerText;
+        
+        // 로딩 상태 표시
+        btn.disabled = true;
+        btn.innerText = '저장 중...';
+        btn.classList.add('opacity-75');
+
+        const form = e.target;
+        const formData = {
+          date: form.date.value,
+          item: form.item.value,
+          type: form.type.value,
+          qty: form.qty.value,
+          memo: form.memo.value
+        };
+
+        google.script.run
+          .withSuccessHandler(res => {
+            // 저장 성공 시
+            alert(res);
+            form.reset();
+            // 오늘 날짜 다시 세팅
+            document.querySelector('input[name="date"]').valueAsDate = new Date();
+            closeModal('modal-material');
+            loadMaterials(); // 목록 새로고침
+          })
+          .withFailureHandler(err => {
+            alert("저장 실패: " + err.message);
+          })
+          .addMaterial(formData) // 데이터 전송
+          .withUserObject(btn) // 버튼 객체 전달 (상태 복구용)
+          .then(() => {
+             // finally 처럼 사용 (Google Script는 Promise가 아니지만 유사하게 처리)
+             btn.disabled = false;
+             btn.innerText = originalText;
+             btn.classList.remove('opacity-75');
+          });
+          // 주의: GAS의 withUserObject는 클라이언트 사이드 객체 전달용이 아님.
+          // 위 코드는 비동기 처리를 위한 구조 예시이며, 실제로는 onSuccess 안에서 버튼 복구해야 함.
+          // 수정:
+      }
+
+      // 위 submitMaterial 함수의 버튼 복구 로직을 onSuccess/onFailure 내부로 이동하는 것이 안전함.
+      // (위 코드는 예시로 둔 것이며 실제 실행 시 약간 수정 필요)
+      
+      // 실제 submitMaterial 재정의
+      function submitMaterial(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-material');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<div class="loader mr-2" style="width:16px;height:16px;border-width:2px;"></div> 저장 중...';
+
+        const form = e.target;
+        const formData = {
+          date: form.date.value,
+          item: form.item.value,
+          type: form.type.value,
+          qty: form.qty.value,
+          memo: form.memo.value
+        };
+
+        google.script.run
+          .withSuccessHandler(() => {
+            // 1. 폼 초기화
+            form.reset();
+            document.querySelector('input[name="date"]').valueAsDate = new Date();
+            // 2. 모달 닫기
+            closeModal('modal-material');
+            // 3. 목록 새로고침
+            loadMaterials();
+            // 4. 버튼 복구
+            btn.disabled = false;
+            btn.innerText = '저장하기';
+          })
+          .withFailureHandler(err => {
+            alert("저장 실패: " + err.message);
+            btn.disabled = false;
+            btn.innerText = '저장하기';
+          })
+          .addMaterial(formData);
+      }
+    </script>
+  </body>
+</html>
