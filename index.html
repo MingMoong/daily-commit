@@ -65,7 +65,7 @@
         </div>
       </div>
 
-      <!-- [수정됨] 원재료수불부 화면 -->
+      <!-- 원재료수불부 화면 -->
       <div id="view-materials" class="view-section hidden fade-in pb-20"> <!-- FAB 공간 확보를 위해 padding-bottom 추가 -->
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-bold flex items-center">
@@ -199,31 +199,32 @@
         <p class="text-xs text-gray-500 mt-1">ERP Navigation</p>
       </div>
       <div class="flex-grow py-4 space-y-1 overflow-y-auto">
-        <a href="#" onclick="navigateTo('view-dashboard')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        <!-- 수정됨: a 태그를 button 태그로 변경하여 target='_top' 이슈 해결 -->
+        <button onclick="navigateTo('view-dashboard')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left">
           <span class="material-icons text-gray-400 mr-3 text-xl">dashboard</span>
           <span class="font-medium">대시보드</span>
-        </a>
-        <a href="#" onclick="navigateTo('view-materials')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        </button>
+        <button onclick="navigateTo('view-materials')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left">
           <span class="material-icons text-gray-400 mr-3 text-xl">inventory_2</span>
           <span class="font-medium">원재료수불부</span>
-        </a>
-        <a href="#" onclick="navigateTo('view-production')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        </button>
+        <button onclick="navigateTo('view-production')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left">
           <span class="material-icons text-gray-400 mr-3 text-xl">factory</span>
           <span class="font-medium">생산일지</span>
-        </a>
-        <a href="#" onclick="navigateTo('view-semi')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        </button>
+        <button onclick="navigateTo('view-semi')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left">
           <span class="material-icons text-gray-400 mr-3 text-xl">category</span>
           <span class="font-medium">반제품수불부</span>
-        </a>
-        <a href="#" onclick="navigateTo('view-packaging')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        </button>
+        <button onclick="navigateTo('view-packaging')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left">
           <span class="material-icons text-gray-400 mr-3 text-xl">inventory</span>
           <span class="font-medium">포장일지</span>
-        </a>
+        </button>
         <div class="h-px bg-gray-100 my-2 mx-6"></div>
-        <a href="#" onclick="navigateTo('view-settings')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+        <button onclick="navigateTo('view-settings')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left">
           <span class="material-icons text-gray-400 mr-3 text-xl">settings</span>
           <span class="font-medium">설정</span>
-        </a>
+        </button>
       </div>
       <div class="p-4 text-xs text-center text-gray-400 border-t border-gray-100">&copy; Woondooran ERP</div>
     </nav>
