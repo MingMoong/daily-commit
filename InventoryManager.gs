@@ -34,8 +34,8 @@ function getInitialData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
   // 1. 각 시트가 존재하는지 확인하고 없으면 생성
-  // CEO님 참고: 헤더 이름에 띄어쓰기가 있어도 전혀 문제 없습니다! (예: '품목 명', '입고 수량')
-  initSheet(ss, SHEETS.RAW_MATERIALS, ['날짜', '품목명', '구분', '수량', '담당자', '비고']);
+  // [수정] 원재료수불부 헤더 변경: 로트번호 추가, 비고 -> 내역
+  initSheet(ss, SHEETS.RAW_MATERIALS, ['날짜', '품목명', '구분', '수량', '로트번호', '담당자', '내역']);
   initSheet(ss, SHEETS.PRODUCTION, ['날짜', '제품명', '생산량', '작업자', '비고']);
   initSheet(ss, SHEETS.SEMI_FINISHED, ['날짜', '반제품명', '입고', '사용', '재고']);
   initSheet(ss, SHEETS.PACKAGING, ['날짜', '제품명', '포장수량', '검수자', '상태']);
@@ -61,51 +61,119 @@ function getInitialData() {
 }
 
 /**
- * [원재료] 데이터 불러오기
- * 최신순으로 정렬하여 반환합니다.
+ * [원재료] 데이터 불러오기 (로트번호, 내역 추가)
  */
 function getMaterials() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.RAW_MATERIALS);
   
-  // 데이터가 없으면 빈 배열 반환 (헤더 제외)
-  if (sheet.getLastRow() < 2) return [];
+  // 데이터가 없으면 빈 값 반환
+  if (sheet.getLastRow() < 2) {
+    return { history: [], summary: [] };
+  }
   
-  // 전체 데이터 가져오기 (2행부터 끝까지)
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  // 전체 데이터 가져오기
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
   
-  // 배열을 객체(JSON) 형태로 변환하여 사용하기 편하게 가공
-  // 최신 데이터가 위로 오도록 reverse() 사용
-  return data.map(row => ({
-    date: formatDate(row[0]), // 날짜 포맷팅
+  // 1. 히스토리 데이터 포맷팅 (컬럼 인덱스 변경됨)
+  // 0:날짜, 1:품목, 2:구분, 3:수량, 4:로트번호, 5:담당자, 6:내역
+  const history = values.map(row => ({
+    date: formatDate(row[0]),
     item: row[1],
-    type: row[2], // 입고 or 출고
-    qty: row[3],
-    manager: row[4],
-    memo: row[5]
-  })).reverse(); 
+    type: row[2], 
+    qty: Number(row[3]) || 0,
+    lot: row[4] || '', // 로트번호 추가
+    manager: row[5],
+    desc: row[6]       // 비고 -> 내역
+  })).reverse(); // 최신순 정렬
+
+  // 2. 재고 합계 계산 (로직 동일)
+  const stockMap = {};
+  
+  values.forEach(row => {
+    const item = row[1];
+    const type = row[2];
+    const qty = Number(row[3]) || 0;
+    
+    if (!stockMap[item]) stockMap[item] = 0;
+    
+    if (type === '입고') {
+      stockMap[item] += qty;
+    } else if (type === '출고') {
+      stockMap[item] -= qty;
+    }
+  });
+
+  // Map을 배열로 변환
+  const summary = Object.keys(stockMap).map(key => ({
+    item: key,
+    total: stockMap[key]
+  }));
+
+  return {
+    history: history,
+    summary: summary
+  };
 }
 
 /**
- * [원재료] 데이터 저장하기
- * 앱에서 받은 데이터를 시트의 마지막 줄에 추가합니다.
+ * [원재료] 데이터 저장하기 (로트번호, 내역 반영)
  */
 function addMaterial(formObj) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.RAW_MATERIALS);
   
-  // 입력된 값들 (순서: 날짜, 품목명, 구분, 수량, 담당자, 비고)
   const rowData = [
     formObj.date,
     formObj.item,
     formObj.type,
     formObj.qty,
-    Session.getActiveUser().getEmail(), // 현재 로그인한 사용자 이메일 자동 기록
+    formObj.lot, // 로트번호 추가
+    Session.getActiveUser().getEmail(),
+    formObj.desc // 내역(구 비고)
+  ];
+  
+  sheet.appendRow(rowData);
+  return "원재료가 저장되었습니다.";
+}
+
+/**
+ * [생산일지] 데이터 불러오기
+ */
+function getProduction() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.PRODUCTION);
+  
+  if (sheet.getLastRow() < 2) return [];
+  
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  
+  return data.map(row => ({
+    date: formatDate(row[0]),
+    product: row[1],
+    qty: row[2],
+    worker: row[3],
+    memo: row[4]
+  })).reverse(); 
+}
+
+/**
+ * [생산일지] 데이터 저장하기
+ */
+function addProduction(formObj) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.PRODUCTION);
+  
+  const rowData = [
+    formObj.date,
+    formObj.product,
+    formObj.qty,
+    Session.getActiveUser().getEmail(), 
     formObj.memo
   ];
   
   sheet.appendRow(rowData);
-  return "성공적으로 저장되었습니다.";
+  return "생산실적이 등록되었습니다.";
 }
 
 /**
@@ -117,7 +185,6 @@ function initSheet(ss, sheetName, headers) {
     sheet = ss.insertSheet(sheetName);
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#f3f4f6');
-    // 날짜 열(A열) 서식 설정 (YYYY-MM-DD)
     sheet.getRange("A:A").setNumberFormat("yyyy-mm-dd");
   }
   return sheet;
@@ -128,6 +195,6 @@ function initSheet(ss, sheetName, headers) {
  */
 function formatDate(date) {
   if (!date) return "";
-  if (typeof date === 'string') return date; // 이미 문자열이면 그대로
+  if (typeof date === 'string') return date;
   return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
