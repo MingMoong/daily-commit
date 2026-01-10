@@ -77,9 +77,23 @@
           </button>
         </div>
 
-        <!-- 재고 현황 -->
+        <!-- [NEW] 재고 현황 및 날짜 필터 -->
         <div class="mb-6">
-          <h3 class="text-xs font-bold text-gray-500 mb-2 px-1">현재 재고 현황 <span class="text-[10px] font-normal text-gray-400 ml-1">(카드를 눌러 상세조회)</span></h3>
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-2 px-1">
+            <h3 class="text-xs font-bold text-gray-500 mb-1 sm:mb-0">재고 현황 <span class="text-[10px] font-normal text-gray-400 ml-1">(카드를 눌러 상세조회)</span></h3>
+            
+            <!-- 메인 날짜 필터 -->
+            <div class="flex items-center space-x-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm w-fit">
+              <div class="relative">
+                 <input type="date" id="main-date-start" onchange="updateMainView()" class="text-xs font-bold text-gray-600 bg-transparent outline-none w-24">
+              </div>
+              <span class="text-gray-400 text-xs">~</span>
+              <div class="relative">
+                 <input type="date" id="main-date-end" onchange="updateMainView()" class="text-xs font-bold text-gray-600 bg-transparent outline-none w-24">
+              </div>
+            </div>
+          </div>
+
           <div id="material-summary" class="flex space-x-3 overflow-x-auto hide-scroll pb-2">
              <div class="flex-shrink-0 w-32 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-xs">
                로딩 중...
@@ -88,7 +102,7 @@
         </div>
 
         <!-- 전체 입출고 내역 -->
-        <h3 class="text-xs font-bold text-gray-500 mb-2 px-1">최근 전체 입출고 내역</h3>
+        <h3 class="text-xs font-bold text-gray-500 mb-2 px-1">선택 기간 입출고 내역</h3>
         <div id="material-list" class="space-y-3">
           <!-- 리스트 -->
         </div>
@@ -132,7 +146,7 @@
       <div id="view-settings" class="view-section hidden fade-in">
         <h2 class="text-xl font-bold mb-4 flex items-center"><span class="material-icons text-gray-500 mr-2">settings</span> 설정</h2>
         <div class="bg-white p-4 rounded-xl border shadow-sm space-y-4">
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label><div class="text-sm font-semibold">v1.5.0 (Lot Filter System)</div></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label><div class="text-sm font-semibold">v1.7.0 (Main & Detail Sync)</div></div>
           <div class="h-px bg-gray-100"></div>
           <div><label class="block text-xs font-bold text-gray-500 mb-1">사용자 계정</label><div id="setting-email" class="text-sm text-gray-600">loading...</div></div>
         </div>
@@ -161,21 +175,34 @@
       </div>
     </div>
 
-    <!-- [모달] 원재료 상세 내역 (UI 전면 수정) -->
+    <!-- [모달] 원재료 상세 내역 -->
     <div id="modal-material-detail" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white w-full sm:w-96 max-h-[90vh] rounded-2xl shadow-2xl flex flex-col fade-in overflow-hidden">
         <!-- 헤더 -->
-        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <div>
-            <h3 class="text-xl font-bold text-gray-800" id="detail-title">원재료명</h3>
-            <p class="text-xs text-gray-500">로트별 재고 및 상세 이력</p>
+        <div class="p-4 border-b border-gray-100 bg-gray-50">
+          <div class="flex justify-between items-center mb-2">
+            <div>
+              <h3 class="text-xl font-bold text-gray-800" id="detail-title">원재료명</h3>
+              <p class="text-xs text-gray-500">기간별 로트 재고 및 이력</p>
+            </div>
+            <button onclick="closeModal('modal-material-detail')" class="text-gray-400 hover:text-gray-600 p-1">
+              <span class="material-icons">close</span>
+            </button>
           </div>
-          <button onclick="closeModal('modal-material-detail')" class="text-gray-400 hover:text-gray-600 p-1">
-            <span class="material-icons">close</span>
-          </button>
+          
+          <!-- 상세 날짜 필터 -->
+          <div class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-gray-200">
+            <div class="relative flex-grow">
+               <input type="date" id="detail-date-start" onchange="updateDetailView()" class="w-full text-xs font-bold text-gray-600 bg-transparent outline-none">
+            </div>
+            <span class="text-gray-400 text-xs">~</span>
+            <div class="relative flex-grow">
+               <input type="date" id="detail-date-end" onchange="updateDetailView()" class="w-full text-xs font-bold text-gray-600 bg-transparent outline-none">
+            </div>
+          </div>
         </div>
         
-        <!-- [NEW] 로트별 카드 그리드 -->
+        <!-- 로트별 카드 그리드 -->
         <div class="px-4 pt-4 bg-white">
           <div id="detail-lot-cards" class="grid grid-cols-2 gap-3 mb-2">
             <!-- JS로 로트 카드 주입 -->
@@ -235,18 +262,38 @@
 
     <!-- JavaScript 로직 -->
     <script>
-      let cachedMaterials = null;
-      // 상세 팝업에서 현재 선택된 품목의 히스토리와 로트 정보를 임시 저장
-      let currentDetailContext = { item: null, history: [], lots: {}, selectedLot: 'ALL' };
+      let cachedMaterials = null; // 서버에서 받아온 원본 데이터 전체
+      let currentDetailContext = { item: null, rawHistory: [], selectedLot: 'ALL' };
 
       window.onload = function() {
         google.script.run.withSuccessHandler(initApp).withFailureHandler(console.error).getInitialData();
-        setTodayDate();
+        setInitialDates(); // 앱 로드 시 날짜 초기화 (메인/등록폼 등)
       };
 
-      function setTodayDate() {
+      /**
+       * 날짜 초기화 로직
+       * 1. 등록 폼: 오늘 날짜
+       * 2. 메인 화면: 오늘 - 1년 ~ 오늘
+       */
+      function setInitialDates() {
          const today = new Date();
-         document.querySelectorAll('input[name="date"]').forEach(el => el.valueAsDate = today);
+         const lastYear = new Date();
+         lastYear.setFullYear(today.getFullYear() - 1);
+         
+         const toDateString = (date) => date.toISOString().split('T')[0];
+         const todayStr = toDateString(today);
+         const lastYearStr = toDateString(lastYear);
+
+         // 등록 폼 날짜들
+         document.querySelectorAll('input[name="date"]').forEach(el => el.value = todayStr);
+         
+         // 메인 화면 필터 날짜
+         const startEl = document.getElementById('main-date-start');
+         const endEl = document.getElementById('main-date-end');
+         if(startEl && endEl) {
+           startEl.value = lastYearStr;
+           endEl.value = todayStr;
+         }
       }
 
       function initApp(data) {
@@ -293,44 +340,90 @@
         const listEl = document.getElementById('material-list');
         const summaryEl = document.getElementById('material-summary');
         
+        // 로딩 UI 표시
         listEl.innerHTML = '<div class="text-center py-10 text-gray-400"><div class="loader mx-auto mb-2"></div><p class="text-xs">내역 로딩 중...</p></div>';
         summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed"><div class="loader mr-2" style="width:16px;height:16px;"></div>재고 계산 중...</div>';
         
-        google.script.run.withSuccessHandler(renderMaterials).getMaterials();
+        // 서버 요청
+        google.script.run.withSuccessHandler(onMaterialsLoaded).getMaterials();
       }
 
-      function renderMaterials(data) {
-        cachedMaterials = data;
-        const listEl = document.getElementById('material-list');
-        const summaryEl = document.getElementById('material-summary');
+      // 데이터 로드 완료 콜백
+      function onMaterialsLoaded(data) {
+        cachedMaterials = data; // 전체 데이터 캐싱
+        updateMainView(); // 현재 날짜 필터로 화면 갱신
+      }
 
-        // 1. 재고 현황
-        if (!data.summary || data.summary.length === 0) {
-           summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed">데이터가 없습니다.</div>';
-        } else {
-           let summaryHtml = '';
-           data.summary.forEach(item => {
-             const stockClass = item.total <= 0 ? 'text-red-500 bg-red-50 border-red-100' : 'text-blue-600 bg-blue-50 border-blue-100';
-             summaryHtml += `
-               <div onclick="openMaterialDetail('${item.item}')" class="flex-shrink-0 w-32 bg-white rounded-xl border p-3 flex flex-col justify-between shadow-sm snap-center cursor-pointer hover:border-orange-300 hover:shadow-md transition-all active:scale-95">
-                 <span class="text-xs text-gray-500 font-bold truncate">${item.item}</span>
-                 <div class="text-right">
-                   <span class="text-lg font-bold ${stockClass} px-2 py-1 rounded-md inline-block">${item.total}</span>
-                 </div>
-               </div>
-             `;
-           });
-           summaryEl.innerHTML = summaryHtml;
+      /**
+       * [메인 화면 업데이트]
+       * 메인 날짜 필터를 기준으로 데이터를 필터링하고 재계산하여 렌더링
+       */
+      function updateMainView() {
+        if (!cachedMaterials || !cachedMaterials.history) return;
+
+        const startStr = document.getElementById('main-date-start').value;
+        const endStr = document.getElementById('main-date-end').value;
+
+        // 1. 날짜 필터링
+        const filteredHistory = cachedMaterials.history.filter(h => {
+           return h.date >= startStr && h.date <= endStr;
+        });
+
+        // 2. 재고(수량) 집계 재계산
+        // 주의: 여기서는 "선택된 기간 동안의 변동량"을 보여주게 됨
+        // 만약 전체 재고를 보여주려면 필터링 로직을 분리해야 하지만, 요청 맥락상 기간별 조회를 따름
+        const stockMap = {};
+        filteredHistory.forEach(item => {
+           const qty = item.type === '입고' ? item.qty : -item.qty;
+           if(!stockMap[item.item]) stockMap[item.item] = 0;
+           stockMap[item.item] += qty;
+        });
+        
+        const computedSummary = Object.keys(stockMap).map(key => ({
+          item: key,
+          total: stockMap[key]
+        }));
+
+        // 3. 렌더링
+        renderMainSummary(computedSummary);
+        renderMainList(filteredHistory);
+      }
+
+      // 메인: 요약 카드 렌더링
+      function renderMainSummary(summaryData) {
+        const summaryEl = document.getElementById('material-summary');
+        
+        if (!summaryData || summaryData.length === 0) {
+           summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed">해당 기간 데이터 없음</div>';
+           return;
         }
 
-        // 2. 전체 내역 리스트
-        if (!data.history || data.history.length === 0) {
-          listEl.innerHTML = '<div class="text-center py-10 text-gray-300 border border-dashed rounded-xl"><span class="material-icons text-4xl mb-2">inbox</span><p class="text-sm">데이터 없음</p></div>';
+        let summaryHtml = '';
+        summaryData.forEach(item => {
+          const stockClass = item.total <= 0 ? 'text-red-500 bg-red-50 border-red-100' : 'text-blue-600 bg-blue-50 border-blue-100';
+          summaryHtml += `
+            <div onclick="openMaterialDetail('${item.item}')" class="flex-shrink-0 w-32 bg-white rounded-xl border p-3 flex flex-col justify-between shadow-sm snap-center cursor-pointer hover:border-orange-300 hover:shadow-md transition-all active:scale-95">
+              <span class="text-xs text-gray-500 font-bold truncate">${item.item}</span>
+              <div class="text-right">
+                <span class="text-lg font-bold ${stockClass} px-2 py-1 rounded-md inline-block">${item.total}</span>
+              </div>
+            </div>
+          `;
+        });
+        summaryEl.innerHTML = summaryHtml;
+      }
+
+      // 메인: 리스트 렌더링
+      function renderMainList(historyData) {
+        const listEl = document.getElementById('material-list');
+        
+        if (!historyData || historyData.length === 0) {
+          listEl.innerHTML = '<div class="text-center py-10 text-gray-300 border border-dashed rounded-xl"><span class="material-icons text-4xl mb-2">inbox</span><p class="text-sm">기간 내 내역이 없습니다.</p></div>';
           return;
         }
         
         let html = '';
-        data.history.forEach(item => {
+        historyData.forEach(item => {
           const typeClass = item.type === '입고' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600';
           const qtySign = item.type === '입고' ? '+' : '-';
           const lotHtml = item.lot ? `<span class="text-[10px] bg-gray-100 text-gray-500 px-1 rounded ml-1">Lot: ${item.lot}</span>` : '';
@@ -355,72 +448,98 @@
       }
 
       /**
-       * [상세 내역 모달 열기] (대폭 수정됨)
-       * 기능: 로트별 재고 계산 + 카드 UI 생성 + 필터링 기능 준비
+       * [상세 내역 모달 열기] (메인 날짜 연동)
        */
       function openMaterialDetail(itemName) {
         if (!cachedMaterials || !cachedMaterials.history) return;
 
-        // 1. 해당 품목의 히스토리만 추출
-        const filteredHistory = cachedMaterials.history.filter(h => h.item === itemName);
+        // 1. 해당 품목의 모든 히스토리 추출 (날짜 필터링 전 원본)
+        const allHistory = cachedMaterials.history.filter(h => h.item === itemName);
         
-        // 2. 로트별 재고 집계 (JavaScript Grouping Logic)
-        const lotSummary = {};
-        let totalQty = 0;
+        // 2. [SYNC] 메인 화면의 날짜 값을 가져와서 팝업 기본값으로 설정
+        const mainStart = document.getElementById('main-date-start').value;
+        const mainEnd = document.getElementById('main-date-end').value;
         
-        filteredHistory.forEach(h => {
-          const qty = h.type === '입고' ? h.qty : -h.qty; // 출고는 마이너스
-          totalQty += qty;
-          
-          const lotKey = h.lot ? h.lot : 'Lot 없음'; // 로트가 없으면 'Lot 없음' 그룹으로
-          if (!lotSummary[lotKey]) lotSummary[lotKey] = 0;
-          lotSummary[lotKey] += qty;
-        });
+        document.getElementById('detail-date-start').value = mainStart;
+        document.getElementById('detail-date-end').value = mainEnd;
 
-        // 3. 컨텍스트 저장 (필터링을 위해)
+        // 3. 컨텍스트 초기화
         currentDetailContext = {
           item: itemName,
-          history: filteredHistory,
-          lots: lotSummary,
-          selectedLot: 'ALL' // 초기값은 전체 보기
+          rawHistory: allHistory,
+          selectedLot: 'ALL'
         };
 
-        // 4. UI 렌더링
         document.getElementById('detail-title').innerText = itemName;
-        renderDetailLotCards(totalQty);
-        renderDetailList(); // 초기 리스트 렌더링
-
+        
+        // 4. 화면 업데이트 (설정된 날짜로 필터링 수행)
+        updateDetailView();
+        
         openModal('modal-material-detail');
       }
 
       /**
-       * 상세 모달 내부: 로트 카드 렌더링
+       * [상세 화면 업데이트]
        */
-      function renderDetailLotCards(totalQty) {
+      function updateDetailView() {
+        const ctx = currentDetailContext;
+        const startStr = document.getElementById('detail-date-start').value;
+        const endStr = document.getElementById('detail-date-end').value;
+
+        // 1. 날짜 필터링
+        const dateFilteredHistory = ctx.rawHistory.filter(h => {
+           return h.date >= startStr && h.date <= endStr;
+        });
+
+        // 2. 로트별 집계
+        const lotSummary = {};
+        let totalQty = 0;
+        
+        dateFilteredHistory.forEach(h => {
+          const qty = h.type === '입고' ? h.qty : -h.qty;
+          totalQty += qty;
+          
+          const lotKey = h.lot ? h.lot : 'Lot 없음';
+          if (!lotSummary[lotKey]) lotSummary[lotKey] = 0;
+          lotSummary[lotKey] += qty;
+        });
+
+        // 3. 최종 리스트 필터링 (선택된 로트)
+        let finalDisplayList = dateFilteredHistory;
+        if (ctx.selectedLot !== 'ALL') {
+          finalDisplayList = finalDisplayList.filter(h => (h.lot || 'Lot 없음') === ctx.selectedLot);
+        }
+
+        // 4. 렌더링
+        renderDetailLotCards(lotSummary, totalQty);
+        renderDetailList(finalDisplayList);
+      }
+
+      // 상세: 로트 카드 렌더링
+      function renderDetailLotCards(lotSummary, totalQty) {
         const container = document.getElementById('detail-lot-cards');
         const ctx = currentDetailContext;
         
-        // 1. [전체] 카드 생성
-        // 선택되면 진한 주황색(orange-500), 아니면 연한 주황색(orange-300)
+        // [전체] 카드
         const isAllSelected = ctx.selectedLot === 'ALL';
         const allCardClass = isAllSelected ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-200' : 'bg-orange-300 text-white bg-opacity-90';
 
         let html = `
           <div onclick="filterDetailByLot('ALL')" class="${allCardClass} rounded-xl p-3 flex flex-col justify-center items-center cursor-pointer transition-all active:scale-95">
-             <span class="text-xs font-bold opacity-80 mb-1">전체 재고</span>
+             <span class="text-xs font-bold opacity-80 mb-1">기간 합계</span>
              <span class="text-xl font-bold">${totalQty}</span>
           </div>
         `;
 
-        // 2. [개별 로트] 카드 생성
-        Object.keys(ctx.lots).forEach(lotKey => {
+        // [개별 로트] 카드
+        Object.keys(lotSummary).forEach(lotKey => {
            const isSelected = ctx.selectedLot === lotKey;
            const cardClass = isSelected ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-200' : 'bg-orange-300 text-white bg-opacity-90';
            
            html += `
              <div onclick="filterDetailByLot('${lotKey}')" class="${cardClass} rounded-xl p-3 flex flex-col justify-center items-center cursor-pointer transition-all active:scale-95">
                <span class="text-xs font-bold opacity-80 mb-1 truncate w-full text-center">${lotKey}</span>
-               <span class="text-xl font-bold">${ctx.lots[lotKey]}</span>
+               <span class="text-xl font-bold">${lotSummary[lotKey]}</span>
              </div>
            `;
         });
@@ -428,51 +547,24 @@
         container.innerHTML = html;
       }
 
-      /**
-       * 상세 모달 내부: 로트 카드 클릭 시 필터링 처리
-       */
       function filterDetailByLot(lotKey) {
         currentDetailContext.selectedLot = lotKey;
-        
-        // 카드 스타일 업데이트 (다시 그리기)
-        // 전체 재고량 계산은 이미 lots 객체의 합이나 totalQty로 가능하지만, 
-        // 여기서는 간단히 재계산하거나 저장된 값을 쓸 수 있습니다.
-        // 편의상 renderDetailLotCards를 다시 호출하기 위해 전체 합계를 다시 구합니다. (빠름)
-        let totalQty = 0;
-        Object.values(currentDetailContext.lots).forEach(v => totalQty += v);
-        
-        renderDetailLotCards(totalQty);
-        renderDetailList();
+        updateDetailView();
       }
 
-      /**
-       * 상세 모달 내부: 리스트 렌더링 (필터 적용)
-       */
-      function renderDetailList() {
+      // 상세: 리스트 렌더링
+      function renderDetailList(displayList) {
         const container = document.getElementById('detail-content');
-        const ctx = currentDetailContext;
         
-        let displayList = ctx.history;
-        
-        // 필터링
-        if (ctx.selectedLot !== 'ALL') {
-          displayList = displayList.filter(h => {
-             const hLot = h.lot ? h.lot : 'Lot 없음';
-             return hLot === ctx.selectedLot;
-          });
-        }
-
         if (displayList.length === 0) {
-          container.innerHTML = '<div class="text-center text-gray-400 py-10">내역이 없습니다.</div>';
+          container.innerHTML = '<div class="text-center text-gray-400 py-10">해당 기간에 내역이 없습니다.</div>';
           return;
         }
 
         let html = '';
         displayList.forEach(item => {
           const isInput = item.type === '입고';
-          const typeClass = isInput ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600';
           const qtySign = isInput ? '+' : '-';
-          
           const lotHtml = item.lot ? `<span class="bg-gray-100 text-gray-500 px-1 rounded ml-1 text-[10px]">Lot: ${item.lot}</span>` : '';
 
           html += `
@@ -562,7 +654,7 @@
           .withSuccessHandler((res) => {
             alert(res);
             form.reset();
-            setTodayDate();
+            setInitialDates(); // 저장 후 날짜도 재초기화
             closeModal(modalId);
             reloadFunc(); 
             btn.disabled = false;
