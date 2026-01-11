@@ -11,7 +11,8 @@ const SHEETS = {
   PRODUCTION: '생산일지',
   SEMI_FINISHED: '반제품수불부',
   PACKAGING: '포장일지',
-  SETTINGS: '설정'
+  SETTINGS: '설정',
+  ITEMS: '품목관리' // [NEW] 기준정보 시트
 };
 
 /**
@@ -28,17 +29,19 @@ function doGet() {
 /**
  * 초기 앱 실행 시 데이터 가져오기
  * 1. 필요한 시트가 없으면 생성
- * 2. 회사명 등 설정 정보 반환
+ * 2. 회사명 및 등록된 품목 정보 반환
  */
 function getInitialData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
   // 1. 각 시트가 존재하는지 확인하고 없으면 생성
-  // [수정] 원재료수불부 헤더 변경: 로트번호 추가, 비고 -> 내역
   initSheet(ss, SHEETS.RAW_MATERIALS, ['날짜', '품목명', '구분', '수량', '로트번호', '담당자', '내역']);
   initSheet(ss, SHEETS.PRODUCTION, ['날짜', '제품명', '생산량', '작업자', '비고']);
   initSheet(ss, SHEETS.SEMI_FINISHED, ['날짜', '반제품명', '입고', '사용', '재고']);
   initSheet(ss, SHEETS.PACKAGING, ['날짜', '제품명', '포장수량', '검수자', '상태']);
+  
+  // [NEW] 품목관리 시트 생성 (구분, 품목명, 단위)
+  initSheet(ss, SHEETS.ITEMS, ['구분', '품목명', '단위']); 
   
   // 설정 시트 확인 및 기본 회사명 설정
   let settingSheet = ss.getSheetByName(SHEETS.SETTINGS);
@@ -54,10 +57,48 @@ function getInitialData() {
     if (val) companyName = val;
   }
 
+  // [NEW] 등록된 '원재료' 리스트 가져오기 (드롭다운 구성용)
+  const itemSheet = ss.getSheetByName(SHEETS.ITEMS);
+  let rawMaterials = [];
+  if (itemSheet.getLastRow() > 1) {
+    const data = itemSheet.getRange(2, 1, itemSheet.getLastRow() - 1, 3).getValues();
+    // data[row][0] = 구분, data[row][1] = 품목명, data[row][2] = 단위
+    rawMaterials = data.filter(row => row[0] === '원재료').map(row => ({
+      name: row[1],
+      unit: row[2]
+    }));
+  }
+
   return {
     companyName: companyName,
-    currentUser: Session.getActiveUser().getEmail()
+    currentUser: Session.getActiveUser().getEmail(),
+    rawMaterials: rawMaterials // 프론트엔드로 전달
   };
+}
+
+/**
+ * [품목관리] 새로운 품목 등록 (설정 화면에서 호출)
+ */
+function addItem(formObj) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.ITEMS);
+  
+  // 중복 체크 (선택 사항이지만 데이터 무결성을 위해 권장)
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === formObj.itemName && data[i][0] === formObj.category) {
+      throw new Error("이미 등록된 품목명입니다.");
+    }
+  }
+
+  // 구분(원재료/반제품 등), 품목명, 단위
+  sheet.appendRow([
+    formObj.category, // 예: '원재료'
+    formObj.itemName,
+    formObj.unit
+  ]);
+  
+  return "품목이 등록되었습니다.";
 }
 
 /**
@@ -75,19 +116,18 @@ function getMaterials() {
   // 전체 데이터 가져오기
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
   
-  // 1. 히스토리 데이터 포맷팅 (컬럼 인덱스 변경됨)
-  // 0:날짜, 1:품목, 2:구분, 3:수량, 4:로트번호, 5:담당자, 6:내역
+  // 1. 히스토리 데이터 포맷팅
   const history = values.map(row => ({
     date: formatDate(row[0]),
     item: row[1],
     type: row[2], 
     qty: Number(row[3]) || 0,
-    lot: row[4] || '', // 로트번호 추가
+    lot: row[4] || '', 
     manager: row[5],
-    desc: row[6]       // 비고 -> 내역
+    desc: row[6]      
   })).reverse(); // 최신순 정렬
 
-  // 2. 재고 합계 계산 (로직 동일)
+  // 2. 재고 합계 계산
   const stockMap = {};
   
   values.forEach(row => {
@@ -104,7 +144,6 @@ function getMaterials() {
     }
   });
 
-  // Map을 배열로 변환
   const summary = Object.keys(stockMap).map(key => ({
     item: key,
     total: stockMap[key]
@@ -117,7 +156,7 @@ function getMaterials() {
 }
 
 /**
- * [원재료] 데이터 저장하기 (로트번호, 내역 반영)
+ * [원재료] 데이터 저장하기
  */
 function addMaterial(formObj) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -125,12 +164,12 @@ function addMaterial(formObj) {
   
   const rowData = [
     formObj.date,
-    formObj.item,
+    formObj.item, // selectBox에서 선택된 값
     formObj.type,
     formObj.qty,
-    formObj.lot, // 로트번호 추가
+    formObj.lot, 
     Session.getActiveUser().getEmail(),
-    formObj.desc // 내역(구 비고)
+    formObj.desc 
   ];
   
   sheet.appendRow(rowData);

@@ -23,6 +23,10 @@
       /* 가로 스크롤 숨기기 */
       .hide-scroll::-webkit-scrollbar { display: none; }
       .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* 토글 스위치 애니메이션 */
+      input:checked ~ .dot { transform: translateX(100%); background-color: #fff; }
+      input:checked ~ .block { background-color: #f97316; } /* Orange-500 */
     </style>
   </head>
   <body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden">
@@ -77,24 +81,30 @@
           </button>
         </div>
 
-        <!-- [NEW] 재고 현황 및 날짜 필터 -->
+        <!-- [NEW] 재고 현황 컨트롤러 (날짜 필터 + 재고 0 숨기기) -->
         <div class="mb-6">
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-2 px-1">
-            <h3 class="text-xs font-bold text-gray-500 mb-1 sm:mb-0">재고 현황 <span class="text-[10px] font-normal text-gray-400 ml-1">(카드를 눌러 상세조회)</span></h3>
-            
-            <!-- 메인 날짜 필터 -->
-            <div class="flex items-center space-x-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm w-fit">
-              <div class="relative">
-                 <input type="date" id="main-date-start" onchange="updateMainView()" class="text-xs font-bold text-gray-600 bg-transparent outline-none w-24">
-              </div>
-              <span class="text-gray-400 text-xs">~</span>
-              <div class="relative">
-                 <input type="date" id="main-date-end" onchange="updateMainView()" class="text-xs font-bold text-gray-600 bg-transparent outline-none w-24">
-              </div>
-            </div>
+          <div class="flex flex-col space-y-3 mb-3">
+             <div class="flex justify-between items-center">
+                <h3 class="text-xs font-bold text-gray-500">재고 현황 <span class="text-[10px] font-normal text-gray-400 ml-1">(카드를 눌러 상세조회)</span></h3>
+                <label for="toggle-main-zero" class="flex items-center cursor-pointer">
+                  <div class="relative">
+                    <input type="checkbox" id="toggle-main-zero" class="sr-only" onchange="updateMainView()">
+                    <div class="block bg-gray-200 w-8 h-5 rounded-full transition"></div>
+                    <div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition"></div>
+                  </div>
+                  <div class="ml-2 text-[10px] text-gray-500 font-bold">재고 0 숨기기</div>
+                </label>
+             </div>
+             
+             <!-- 날짜 필터 -->
+             <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                <input type="date" id="main-date-start" onchange="updateMainView()" class="text-xs font-bold text-gray-600 bg-transparent outline-none w-28">
+                <span class="text-gray-400 text-xs mx-2">~</span>
+                <input type="date" id="main-date-end" onchange="updateMainView()" class="text-xs font-bold text-gray-600 bg-transparent outline-none w-28 text-right">
+             </div>
           </div>
 
-          <div id="material-summary" class="flex space-x-3 overflow-x-auto hide-scroll pb-2">
+          <div id="material-summary" class="flex space-x-3 overflow-x-auto hide-scroll pb-2 min-h-[90px]">
              <div class="flex-shrink-0 w-32 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-xs">
                로딩 중...
              </div>
@@ -134,7 +144,7 @@
         </button>
       </div>
 
-      <!-- 기타 화면들 (반제품, 포장, 설정) -->
+      <!-- 기타 화면들 (반제품, 포장) -->
       <div id="view-semi" class="view-section hidden fade-in">
         <h2 class="text-xl font-bold mb-4 flex items-center"><span class="material-icons text-purple-500 mr-2">category</span> 반제품수불부</h2>
         <div class="bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-400"><span class="material-icons text-4xl mb-2">construction</span><p>준비 중입니다.</p></div>
@@ -143,10 +153,32 @@
         <h2 class="text-xl font-bold mb-4 flex items-center"><span class="material-icons text-green-500 mr-2">inventory</span> 포장일지</h2>
         <div class="bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-400"><span class="material-icons text-4xl mb-2">construction</span><p>준비 중입니다.</p></div>
       </div>
+      
+      <!-- [설정 화면 개편] 기준정보 관리 -->
       <div id="view-settings" class="view-section hidden fade-in">
         <h2 class="text-xl font-bold mb-4 flex items-center"><span class="material-icons text-gray-500 mr-2">settings</span> 설정</h2>
+        
+        <!-- 원재료 품목 관리 섹션 -->
+        <div class="bg-white rounded-xl border shadow-sm mb-6 overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <div>
+              <h3 class="font-bold text-gray-800">원재료 품목 관리</h3>
+              <p class="text-[10px] text-gray-500">입출고 등록 시 사용할 원재료 목록</p>
+            </div>
+            <button onclick="openModal('modal-setting-item')" class="bg-gray-800 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-black transition-colors flex items-center">
+              <span class="material-icons text-sm mr-1">add</span> 등록
+            </button>
+          </div>
+          
+          <div id="settings-material-list" class="p-4 space-y-2 max-h-60 overflow-y-auto">
+             <!-- JS로 리스트 로딩 -->
+             <div class="text-center text-gray-400 text-xs py-4">등록된 원재료가 없습니다.</div>
+          </div>
+        </div>
+
+        <!-- 기타 정보 -->
         <div class="bg-white p-4 rounded-xl border shadow-sm space-y-4">
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label><div class="text-sm font-semibold">v1.7.0 (Main & Detail Sync)</div></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label><div class="text-sm font-semibold">v1.9.0 (Master Data)</div></div>
           <div class="h-px bg-gray-100"></div>
           <div><label class="block text-xs font-bold text-gray-500 mb-1">사용자 계정</label><div id="setting-email" class="text-sm text-gray-600">loading...</div></div>
         </div>
@@ -154,17 +186,23 @@
 
     </main>
 
-    <!-- [모달] 원재료 등록 -->
+    <!-- [모달] 원재료 등록 (Input -> Select 변경) -->
     <div id="modal-material" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
       <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 fade-in shadow-2xl">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-bold text-gray-800">원재료 등록</h3>
+          <h3 class="text-lg font-bold text-gray-800">원재료 입출고 등록</h3>
           <button onclick="closeModal('modal-material')" class="text-gray-400 hover:text-gray-600"><span class="material-icons">close</span></button>
         </div>
         <form onsubmit="submitMaterial(event)" class="space-y-4">
           <div><label class="block text-xs font-bold text-gray-500 mb-1">날짜</label><input type="date" name="date" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
           <div class="flex space-x-2">
-            <div class="w-2/3"><label class="block text-xs font-bold text-gray-500 mb-1">품목명</label><input type="text" name="item" placeholder="예: 밀가루" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
+            <!-- [CHANGED] 품목명 입력을 Dropdown으로 변경 -->
+            <div class="w-2/3">
+              <label class="block text-xs font-bold text-gray-500 mb-1">품목명</label>
+              <select name="item" id="input-material-item" required class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-orange-500">
+                <option value="" disabled selected>선택하세요</option>
+              </select>
+            </div>
             <div class="w-1/3"><label class="block text-xs font-bold text-gray-500 mb-1">구분</label><select name="type" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-orange-500"><option value="입고">입고</option><option value="출고">출고</option></select></div>
           </div>
           <div><label class="block text-xs font-bold text-gray-500 mb-1">수량</label><input type="number" name="qty" placeholder="0" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
@@ -178,48 +216,36 @@
     <!-- [모달] 원재료 상세 내역 -->
     <div id="modal-material-detail" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white w-full sm:w-96 max-h-[90vh] rounded-2xl shadow-2xl flex flex-col fade-in overflow-hidden">
-        <!-- 헤더 -->
         <div class="p-4 border-b border-gray-100 bg-gray-50">
-          <div class="flex justify-between items-center mb-2">
-            <div>
-              <h3 class="text-xl font-bold text-gray-800" id="detail-title">원재료명</h3>
-              <p class="text-xs text-gray-500">기간별 로트 재고 및 이력</p>
-            </div>
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="text-xl font-bold text-gray-800" id="detail-title">원재료명</h3>
             <button onclick="closeModal('modal-material-detail')" class="text-gray-400 hover:text-gray-600 p-1">
               <span class="material-icons">close</span>
             </button>
           </div>
-          
-          <!-- 상세 날짜 필터 -->
+          <div class="flex justify-between items-center mb-2">
+             <p class="text-xs text-gray-500 font-bold">로트별 상세 재고 이력</p>
+             <label for="toggle-detail-zero" class="flex items-center cursor-pointer">
+              <div class="relative">
+                <input type="checkbox" id="toggle-detail-zero" class="sr-only" onchange="updateDetailView()" checked>
+                <div class="block bg-gray-200 w-8 h-5 rounded-full transition"></div>
+                <div class="dot absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition"></div>
+              </div>
+              <div class="ml-2 text-[10px] text-gray-500 font-bold">재고 0 숨기기</div>
+            </label>
+          </div>
           <div class="flex items-center space-x-2 bg-white p-2 rounded-lg border border-gray-200">
-            <div class="relative flex-grow">
-               <input type="date" id="detail-date-start" onchange="updateDetailView()" class="w-full text-xs font-bold text-gray-600 bg-transparent outline-none">
-            </div>
+            <div class="relative flex-grow"><input type="date" id="detail-date-start" onchange="updateDetailView()" class="w-full text-xs font-bold text-gray-600 bg-transparent outline-none"></div>
             <span class="text-gray-400 text-xs">~</span>
-            <div class="relative flex-grow">
-               <input type="date" id="detail-date-end" onchange="updateDetailView()" class="w-full text-xs font-bold text-gray-600 bg-transparent outline-none">
-            </div>
+            <div class="relative flex-grow"><input type="date" id="detail-date-end" onchange="updateDetailView()" class="w-full text-xs font-bold text-gray-600 bg-transparent outline-none text-right"></div>
           </div>
         </div>
-        
-        <!-- 로트별 카드 그리드 -->
-        <div class="px-4 pt-4 bg-white">
-          <div id="detail-lot-cards" class="grid grid-cols-2 gap-3 mb-2">
-            <!-- JS로 로트 카드 주입 -->
-          </div>
-          <div class="h-px bg-gray-100 mt-2 mb-2"></div>
+        <div class="px-4 py-3 bg-white border-b border-gray-50">
+          <div id="detail-lot-chips" class="flex space-x-2 overflow-x-auto hide-scroll"></div>
         </div>
-
-        <!-- 리스트 (스크롤) -->
-        <div id="detail-content" class="px-4 pb-4 overflow-y-auto space-y-3 bg-white flex-grow">
-          <!-- JS로 리스트 주입 -->
-        </div>
-        
-        <!-- 닫기 버튼 (하단) -->
+        <div id="detail-content" class="px-4 pb-4 pt-3 overflow-y-auto space-y-3 bg-white flex-grow"></div>
         <div class="p-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
-           <button onclick="closeModal('modal-material-detail')" class="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors">
-             닫기
-           </button>
+           <button onclick="closeModal('modal-material-detail')" class="w-full bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors">닫기</button>
         </div>
       </div>
     </div>
@@ -237,6 +263,41 @@
           <div><label class="block text-xs font-bold text-gray-500 mb-1">생산 수량</label><input type="number" name="qty" placeholder="0" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500"></div>
           <div><label class="block text-xs font-bold text-gray-500 mb-1">비고</label><input type="text" name="memo" placeholder="메모" class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-blue-500"></div>
           <button type="submit" id="btn-save-production" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-colors shadow-md mt-2 flex justify-center items-center">저장하기</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- [NEW 모달] 품목(원재료) 등록 -->
+    <div id="modal-setting-item" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+      <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 fade-in shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-gray-800">원재료 품목 등록</h3>
+          <button onclick="closeModal('modal-setting-item')" class="text-gray-400 hover:text-gray-600"><span class="material-icons">close</span></button>
+        </div>
+        <form onsubmit="submitItem(event)" class="space-y-4">
+          <input type="hidden" name="category" value="원재료"> <!-- 카테고리 고정 -->
+          
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">원재료명</label>
+            <input type="text" name="itemName" placeholder="예: 천일염" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-gray-800">
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-1">단위</label>
+            <select name="unit" required class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-gray-800">
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="개">개</option>
+              <option value="L">L</option>
+              <option value="ml">ml</option>
+              <option value="포">포</option>
+              <option value="box">box</option>
+            </select>
+          </div>
+          
+          <button type="submit" id="btn-save-item" class="w-full bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors shadow-md mt-2 flex justify-center items-center">
+            등록하기
+          </button>
         </form>
       </div>
     </div>
@@ -262,19 +323,15 @@
 
     <!-- JavaScript 로직 -->
     <script>
-      let cachedMaterials = null; // 서버에서 받아온 원본 데이터 전체
+      let cachedMaterials = null; 
+      let cachedRawMaterialItems = []; // [NEW] 원재료 품목 리스트 캐시
       let currentDetailContext = { item: null, rawHistory: [], selectedLot: 'ALL' };
 
       window.onload = function() {
         google.script.run.withSuccessHandler(initApp).withFailureHandler(console.error).getInitialData();
-        setInitialDates(); // 앱 로드 시 날짜 초기화 (메인/등록폼 등)
+        setInitialDates(); 
       };
 
-      /**
-       * 날짜 초기화 로직
-       * 1. 등록 폼: 오늘 날짜
-       * 2. 메인 화면: 오늘 - 1년 ~ 오늘
-       */
       function setInitialDates() {
          const today = new Date();
          const lastYear = new Date();
@@ -284,10 +341,8 @@
          const todayStr = toDateString(today);
          const lastYearStr = toDateString(lastYear);
 
-         // 등록 폼 날짜들
          document.querySelectorAll('input[name="date"]').forEach(el => el.value = todayStr);
          
-         // 메인 화면 필터 날짜
          const startEl = document.getElementById('main-date-start');
          const endEl = document.getElementById('main-date-end');
          if(startEl && endEl) {
@@ -299,6 +354,92 @@
       function initApp(data) {
         document.getElementById('header-company-name').innerText = data.companyName;
         document.getElementById('setting-email').innerText = data.currentUser;
+        
+        // [NEW] 서버에서 받아온 원재료 품목 리스트 저장 및 UI 렌더링
+        cachedRawMaterialItems = data.rawMaterials || [];
+        updateMaterialDropdown(); // 원재료 등록 모달의 SelectBox 채우기
+        renderSettingsItemList(); // 설정 화면의 리스트 채우기
+      }
+
+      // [NEW] 원재료 등록 모달의 Select Box 옵션 갱신
+      function updateMaterialDropdown() {
+        const select = document.getElementById('input-material-item');
+        if (!select) return;
+
+        select.innerHTML = '<option value="" disabled selected>선택하세요</option>';
+        
+        if (cachedRawMaterialItems.length === 0) {
+           const opt = document.createElement('option');
+           opt.disabled = true;
+           opt.text = "(설정에서 품목을 먼저 등록해주세요)";
+           select.add(opt);
+        } else {
+           cachedRawMaterialItems.forEach(item => {
+             const opt = document.createElement('option');
+             opt.value = item.name;
+             opt.text = `${item.name} (${item.unit})`;
+             select.add(opt);
+           });
+        }
+      }
+
+      // [NEW] 설정 화면의 품목 리스트 렌더링
+      function renderSettingsItemList() {
+        const container = document.getElementById('settings-material-list');
+        if (!container) return;
+
+        if (cachedRawMaterialItems.length === 0) {
+          container.innerHTML = '<div class="text-center text-gray-400 text-xs py-4 border border-dashed rounded-lg">등록된 원재료가 없습니다.<br>우측 상단 등록 버튼을 눌러주세요.</div>';
+          return;
+        }
+
+        let html = '';
+        cachedRawMaterialItems.forEach(item => {
+          html += `
+            <div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+              <span class="text-sm font-bold text-gray-700">${item.name}</span>
+              <span class="text-xs text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">${item.unit}</span>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+
+      // [NEW] 품목(원재료) 등록 제출
+      function submitItem(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-item');
+        // 재사용을 위해 handleFormSubmit 패턴을 사용하지만, 성공 후 콜백 로직이 조금 다름
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = '저장 중...';
+
+        const form = e.target;
+        const formData = {};
+        new FormData(form).forEach((value, key) => formData[key] = value);
+
+        google.script.run
+          .withSuccessHandler((res) => {
+            alert(res);
+            form.reset();
+            closeModal('modal-setting-item');
+            
+            // 캐시 업데이트 (단순 추가)
+            cachedRawMaterialItems.push({ name: formData.itemName, unit: formData.unit });
+            
+            // UI 갱신
+            updateMaterialDropdown();
+            renderSettingsItemList();
+            
+            btn.disabled = false;
+            btn.innerText = originalText;
+          })
+          .withFailureHandler(err => {
+            alert("저장 실패: " + err.message);
+            btn.disabled = false;
+            btn.innerText = originalText;
+          })
+          .addItem(formData);
       }
 
       function toggleSidebar() {
@@ -324,6 +465,7 @@
           target.classList.remove('hidden');
           if (viewId === 'view-materials') loadMaterials();
           if (viewId === 'view-production') loadProduction();
+          if (viewId === 'view-settings') renderSettingsItemList(); // 설정 화면 이동 시 리스트 확인
         }
         closeSidebar();
       }
@@ -340,29 +482,27 @@
         const listEl = document.getElementById('material-list');
         const summaryEl = document.getElementById('material-summary');
         
-        // 로딩 UI 표시
         listEl.innerHTML = '<div class="text-center py-10 text-gray-400"><div class="loader mx-auto mb-2"></div><p class="text-xs">내역 로딩 중...</p></div>';
         summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed"><div class="loader mr-2" style="width:16px;height:16px;"></div>재고 계산 중...</div>';
         
-        // 서버 요청
         google.script.run.withSuccessHandler(onMaterialsLoaded).getMaterials();
       }
 
-      // 데이터 로드 완료 콜백
       function onMaterialsLoaded(data) {
-        cachedMaterials = data; // 전체 데이터 캐싱
-        updateMainView(); // 현재 날짜 필터로 화면 갱신
+        cachedMaterials = data;
+        updateMainView();
       }
 
       /**
        * [메인 화면 업데이트]
-       * 메인 날짜 필터를 기준으로 데이터를 필터링하고 재계산하여 렌더링
+       * 날짜 필터 + 재고 0 숨기기 토글 적용
        */
       function updateMainView() {
         if (!cachedMaterials || !cachedMaterials.history) return;
 
         const startStr = document.getElementById('main-date-start').value;
         const endStr = document.getElementById('main-date-end').value;
+        const hideZero = document.getElementById('toggle-main-zero').checked;
 
         // 1. 날짜 필터링
         const filteredHistory = cachedMaterials.history.filter(h => {
@@ -370,8 +510,6 @@
         });
 
         // 2. 재고(수량) 집계 재계산
-        // 주의: 여기서는 "선택된 기간 동안의 변동량"을 보여주게 됨
-        // 만약 전체 재고를 보여주려면 필터링 로직을 분리해야 하지만, 요청 맥락상 기간별 조회를 따름
         const stockMap = {};
         filteredHistory.forEach(item => {
            const qty = item.type === '입고' ? item.qty : -item.qty;
@@ -379,22 +517,25 @@
            stockMap[item.item] += qty;
         });
         
-        const computedSummary = Object.keys(stockMap).map(key => ({
+        let computedSummary = Object.keys(stockMap).map(key => ({
           item: key,
           total: stockMap[key]
         }));
 
-        // 3. 렌더링
+        // 3. [NEW] 재고 0 숨기기 필터
+        if (hideZero) {
+          computedSummary = computedSummary.filter(item => item.total !== 0);
+        }
+
         renderMainSummary(computedSummary);
         renderMainList(filteredHistory);
       }
 
-      // 메인: 요약 카드 렌더링
       function renderMainSummary(summaryData) {
         const summaryEl = document.getElementById('material-summary');
         
         if (!summaryData || summaryData.length === 0) {
-           summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed">해당 기간 데이터 없음</div>';
+           summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed">표시할 데이터가 없습니다.</div>';
            return;
         }
 
@@ -413,7 +554,6 @@
         summaryEl.innerHTML = summaryHtml;
       }
 
-      // 메인: 리스트 렌더링
       function renderMainList(historyData) {
         const listEl = document.getElementById('material-list');
         
@@ -447,23 +587,17 @@
         listEl.innerHTML = html;
       }
 
-      /**
-       * [상세 내역 모달 열기] (메인 날짜 연동)
-       */
       function openMaterialDetail(itemName) {
         if (!cachedMaterials || !cachedMaterials.history) return;
 
-        // 1. 해당 품목의 모든 히스토리 추출 (날짜 필터링 전 원본)
         const allHistory = cachedMaterials.history.filter(h => h.item === itemName);
         
-        // 2. [SYNC] 메인 화면의 날짜 값을 가져와서 팝업 기본값으로 설정
         const mainStart = document.getElementById('main-date-start').value;
         const mainEnd = document.getElementById('main-date-end').value;
         
         document.getElementById('detail-date-start').value = mainStart;
         document.getElementById('detail-date-end').value = mainEnd;
 
-        // 3. 컨텍스트 초기화
         currentDetailContext = {
           item: itemName,
           rawHistory: allHistory,
@@ -471,20 +605,19 @@
         };
 
         document.getElementById('detail-title').innerText = itemName;
-        
-        // 4. 화면 업데이트 (설정된 날짜로 필터링 수행)
         updateDetailView();
-        
         openModal('modal-material-detail');
       }
 
       /**
        * [상세 화면 업데이트]
+       * 날짜 필터 + 로트 칩 렌더링 + 재고 0 숨기기
        */
       function updateDetailView() {
         const ctx = currentDetailContext;
         const startStr = document.getElementById('detail-date-start').value;
         const endStr = document.getElementById('detail-date-end').value;
+        const hideZero = document.getElementById('toggle-detail-zero').checked;
 
         // 1. 날짜 필터링
         const dateFilteredHistory = ctx.rawHistory.filter(h => {
@@ -504,43 +637,46 @@
           lotSummary[lotKey] += qty;
         });
 
-        // 3. 최종 리스트 필터링 (선택된 로트)
+        // 3. 최종 리스트 필터링
         let finalDisplayList = dateFilteredHistory;
         if (ctx.selectedLot !== 'ALL') {
           finalDisplayList = finalDisplayList.filter(h => (h.lot || 'Lot 없음') === ctx.selectedLot);
         }
 
-        // 4. 렌더링
-        renderDetailLotCards(lotSummary, totalQty);
+        renderDetailLotChips(lotSummary, totalQty, hideZero);
         renderDetailList(finalDisplayList);
       }
 
-      // 상세: 로트 카드 렌더링
-      function renderDetailLotCards(lotSummary, totalQty) {
-        const container = document.getElementById('detail-lot-cards');
+      function renderDetailLotChips(lotSummary, totalQty, hideZero) {
+        const container = document.getElementById('detail-lot-chips');
         const ctx = currentDetailContext;
         
-        // [전체] 카드
         const isAllSelected = ctx.selectedLot === 'ALL';
-        const allCardClass = isAllSelected ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-200' : 'bg-orange-300 text-white bg-opacity-90';
+        const allClass = isAllSelected 
+          ? 'bg-orange-500 text-white shadow ring-2 ring-orange-200' 
+          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50';
 
         let html = `
-          <div onclick="filterDetailByLot('ALL')" class="${allCardClass} rounded-xl p-3 flex flex-col justify-center items-center cursor-pointer transition-all active:scale-95">
-             <span class="text-xs font-bold opacity-80 mb-1">기간 합계</span>
-             <span class="text-xl font-bold">${totalQty}</span>
-          </div>
+          <button onclick="filterDetailByLot('ALL')" class="flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95 ${allClass} flex items-center space-x-2">
+             <span>전체</span>
+             <span class="bg-black bg-opacity-10 px-1.5 py-0.5 rounded-full text-[10px]">${totalQty}</span>
+          </button>
         `;
 
-        // [개별 로트] 카드
         Object.keys(lotSummary).forEach(lotKey => {
+           const qty = lotSummary[lotKey];
+           if (hideZero && qty === 0 && ctx.selectedLot !== lotKey) return;
+
            const isSelected = ctx.selectedLot === lotKey;
-           const cardClass = isSelected ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-200' : 'bg-orange-300 text-white bg-opacity-90';
+           const chipClass = isSelected 
+             ? 'bg-orange-500 text-white shadow ring-2 ring-orange-200' 
+             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50';
            
            html += `
-             <div onclick="filterDetailByLot('${lotKey}')" class="${cardClass} rounded-xl p-3 flex flex-col justify-center items-center cursor-pointer transition-all active:scale-95">
-               <span class="text-xs font-bold opacity-80 mb-1 truncate w-full text-center">${lotKey}</span>
-               <span class="text-xl font-bold">${lotSummary[lotKey]}</span>
-             </div>
+             <button onclick="filterDetailByLot('${lotKey}')" class="flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95 ${chipClass} flex items-center space-x-2">
+               <span class="truncate max-w-[80px]">${lotKey}</span>
+               <span class="bg-black bg-opacity-10 px-1.5 py-0.5 rounded-full text-[10px]">${qty}</span>
+             </button>
            `;
         });
 
@@ -552,7 +688,6 @@
         updateDetailView();
       }
 
-      // 상세: 리스트 렌더링
       function renderDetailList(displayList) {
         const container = document.getElementById('detail-content');
         
@@ -592,11 +727,6 @@
         handleFormSubmit(e, btn, 'addMaterial', 'modal-material', loadMaterials);
       }
 
-      /**
-       * ========================
-       * 생산일지 관련 함수
-       * ========================
-       */
       function loadProduction() {
         const listEl = document.getElementById('production-list');
         listEl.innerHTML = '<div class="text-center py-10 text-gray-400"><div class="loader mx-auto mb-2"></div><p class="text-xs">로딩 중...</p></div>';
@@ -638,9 +768,6 @@
         handleFormSubmit(e, btn, 'addProduction', 'modal-production', loadProduction);
       }
 
-      /**
-       * 공통 폼 제출 처리기
-       */
       function handleFormSubmit(e, btn, serverFuncName, modalId, reloadFunc) {
         const originalText = btn.innerText;
         btn.disabled = true;
@@ -654,7 +781,7 @@
           .withSuccessHandler((res) => {
             alert(res);
             form.reset();
-            setInitialDates(); // 저장 후 날짜도 재초기화
+            setInitialDates(); 
             closeModal(modalId);
             reloadFunc(); 
             btn.disabled = false;
