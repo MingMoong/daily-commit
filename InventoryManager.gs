@@ -102,7 +102,7 @@ function addItem(formObj) {
 }
 
 /**
- * [원재료] 데이터 불러오기 (로트번호, 내역 추가)
+ * [원재료] 데이터 불러오기 (로트번호, 내역, ID 추가)
  */
 function getMaterials() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -117,7 +117,9 @@ function getMaterials() {
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
   
   // 1. 히스토리 데이터 포맷팅
-  const history = values.map(row => ({
+  // map의 index는 0부터 시작하므로, 실제 시트 행 번호는 index + 2 (헤더 1행 + 0-index 보정)
+  const history = values.map((row, index) => ({
+    id: index + 2, // [CRITICAL] 수정/삭제를 위한 행 번호(Row Index)
     date: formatDate(row[0]),
     item: row[1],
     type: row[2], 
@@ -156,7 +158,7 @@ function getMaterials() {
 }
 
 /**
- * [원재료] 데이터 저장하기
+ * [원재료] 데이터 저장 (신규 등록)
  */
 function addMaterial(formObj) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -175,6 +177,53 @@ function addMaterial(formObj) {
   sheet.appendRow(rowData);
   return "원재료가 저장되었습니다.";
 }
+
+/**
+ * [원재료] 데이터 수정 (NEW)
+ */
+function editRawMaterial(formObj) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.RAW_MATERIALS);
+  const rowIndex = parseInt(formObj.rowIndex);
+
+  if (isNaN(rowIndex) || rowIndex < 2) {
+    throw new Error("유효하지 않은 데이터 ID입니다.");
+  }
+
+  // 수정할 데이터 매핑 (컬럼 순서 주의: 날짜, 품목명, 구분, 수량, 로트, 담당자, 내역)
+  // 담당자(Column 6)는 수정 시 현재 사용자로 변경할지, 기존 유지할지 결정. 여기선 업데이트하는 것으로 처리.
+  const rowData = [
+    formObj.date,
+    formObj.item,
+    formObj.type,
+    formObj.qty,
+    formObj.lot,
+    Session.getActiveUser().getEmail(), // 수정한 사람으로 변경
+    formObj.desc
+  ];
+
+  // getRange(row, column, numRows, numColumns)
+  sheet.getRange(rowIndex, 1, 1, 7).setValues([rowData]);
+
+  return "원재료 내역이 수정되었습니다.";
+}
+
+/**
+ * [원재료] 데이터 삭제 (NEW)
+ */
+function deleteRawMaterial(rowIndex) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.RAW_MATERIALS);
+  const rIndex = parseInt(rowIndex);
+  
+  if (isNaN(rIndex) || rIndex < 2) {
+    throw new Error("삭제할 수 없는 데이터입니다.");
+  }
+  
+  sheet.deleteRow(rIndex);
+  return "내역이 삭제되었습니다.";
+}
+
 
 /**
  * [생산일지] 데이터 불러오기

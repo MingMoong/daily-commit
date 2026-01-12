@@ -117,8 +117,8 @@
           <!-- 리스트 -->
         </div>
 
-        <!-- FAB: 등록 버튼 -->
-        <button onclick="openModal('modal-material')" class="fixed bottom-6 right-6 bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-full shadow-lg transition-transform active:scale-90 flex items-center justify-center z-10">
+        <!-- FAB: 등록 버튼 (신규 등록) -->
+        <button onclick="openMaterialModal()" class="fixed bottom-6 right-6 bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-full shadow-lg transition-transform active:scale-90 flex items-center justify-center z-10">
           <span class="material-icons">add</span>
         </button>
       </div>
@@ -178,7 +178,7 @@
 
         <!-- 기타 정보 -->
         <div class="bg-white p-4 rounded-xl border shadow-sm space-y-4">
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label><div class="text-sm font-semibold">v1.9.0 (Master Data)</div></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">앱 버전</label><div class="text-sm font-semibold">v1.10.0 (Edit/Delete)</div></div>
           <div class="h-px bg-gray-100"></div>
           <div><label class="block text-xs font-bold text-gray-500 mb-1">사용자 계정</label><div id="setting-email" class="text-sm text-gray-600">loading...</div></div>
         </div>
@@ -186,15 +186,18 @@
 
     </main>
 
-    <!-- [모달] 원재료 등록 (Input -> Select 변경) -->
+    <!-- [모달] 원재료 등록/수정 (통합) -->
     <div id="modal-material" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
       <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 fade-in shadow-2xl">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-bold text-gray-800">원재료 입출고 등록</h3>
+          <h3 class="text-lg font-bold text-gray-800" id="material-modal-title">원재료 입출고 등록</h3>
           <button onclick="closeModal('modal-material')" class="text-gray-400 hover:text-gray-600"><span class="material-icons">close</span></button>
         </div>
-        <form onsubmit="submitMaterial(event)" class="space-y-4">
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">날짜</label><input type="date" name="date" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
+        <form onsubmit="submitMaterial(event)" class="space-y-4" id="form-material">
+          <!-- 수정 시 ID(rowIndex) 저장용 히든 필드 -->
+          <input type="hidden" name="rowIndex" id="material-rowIndex">
+          
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">날짜</label><input type="date" name="date" id="material-date" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
           <div class="flex space-x-2">
             <!-- [CHANGED] 품목명 입력을 Dropdown으로 변경 -->
             <div class="w-2/3">
@@ -203,11 +206,11 @@
                 <option value="" disabled selected>선택하세요</option>
               </select>
             </div>
-            <div class="w-1/3"><label class="block text-xs font-bold text-gray-500 mb-1">구분</label><select name="type" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-orange-500"><option value="입고">입고</option><option value="출고">출고</option></select></div>
+            <div class="w-1/3"><label class="block text-xs font-bold text-gray-500 mb-1">구분</label><select name="type" id="material-type" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-orange-500"><option value="입고">입고</option><option value="출고">출고</option></select></div>
           </div>
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">수량</label><input type="number" name="qty" placeholder="0" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">로트번호</label><input type="text" name="lot" placeholder="Lot No. 입력" class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
-          <div><label class="block text-xs font-bold text-gray-500 mb-1">내역</label><input type="text" name="desc" placeholder="상세 내용 입력" class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">수량</label><input type="number" name="qty" id="material-qty" placeholder="0" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">로트번호</label><input type="text" name="lot" id="material-lot" placeholder="Lot No. 입력" class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-1">내역</label><input type="text" name="desc" id="material-desc" placeholder="상세 내용 입력" class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-orange-500"></div>
           <button type="submit" id="btn-save-material" class="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-colors shadow-md mt-2 flex justify-center items-center">저장하기</button>
         </form>
       </div>
@@ -324,7 +327,7 @@
     <!-- JavaScript 로직 -->
     <script>
       let cachedMaterials = null; 
-      let cachedRawMaterialItems = []; // [NEW] 원재료 품목 리스트 캐시
+      let cachedRawMaterialItems = []; 
       let currentDetailContext = { item: null, rawHistory: [], selectedLot: 'ALL' };
 
       window.onload = function() {
@@ -341,8 +344,10 @@
          const todayStr = toDateString(today);
          const lastYearStr = toDateString(lastYear);
 
+         // 등록 폼은 오늘 날짜
          document.querySelectorAll('input[name="date"]').forEach(el => el.value = todayStr);
          
+         // 조회 필터는 작년부터
          const startEl = document.getElementById('main-date-start');
          const endEl = document.getElementById('main-date-end');
          if(startEl && endEl) {
@@ -355,13 +360,11 @@
         document.getElementById('header-company-name').innerText = data.companyName;
         document.getElementById('setting-email').innerText = data.currentUser;
         
-        // [NEW] 서버에서 받아온 원재료 품목 리스트 저장 및 UI 렌더링
         cachedRawMaterialItems = data.rawMaterials || [];
-        updateMaterialDropdown(); // 원재료 등록 모달의 SelectBox 채우기
-        renderSettingsItemList(); // 설정 화면의 리스트 채우기
+        updateMaterialDropdown(); 
+        renderSettingsItemList(); 
       }
 
-      // [NEW] 원재료 등록 모달의 Select Box 옵션 갱신
       function updateMaterialDropdown() {
         const select = document.getElementById('input-material-item');
         if (!select) return;
@@ -383,7 +386,6 @@
         }
       }
 
-      // [NEW] 설정 화면의 품목 리스트 렌더링
       function renderSettingsItemList() {
         const container = document.getElementById('settings-material-list');
         if (!container) return;
@@ -405,11 +407,9 @@
         container.innerHTML = html;
       }
 
-      // [NEW] 품목(원재료) 등록 제출
       function submitItem(e) {
         e.preventDefault();
         const btn = document.getElementById('btn-save-item');
-        // 재사용을 위해 handleFormSubmit 패턴을 사용하지만, 성공 후 콜백 로직이 조금 다름
         const originalText = btn.innerText;
         btn.disabled = true;
         btn.innerText = '저장 중...';
@@ -424,10 +424,7 @@
             form.reset();
             closeModal('modal-setting-item');
             
-            // 캐시 업데이트 (단순 추가)
             cachedRawMaterialItems.push({ name: formData.itemName, unit: formData.unit });
-            
-            // UI 갱신
             updateMaterialDropdown();
             renderSettingsItemList();
             
@@ -465,7 +462,7 @@
           target.classList.remove('hidden');
           if (viewId === 'view-materials') loadMaterials();
           if (viewId === 'view-production') loadProduction();
-          if (viewId === 'view-settings') renderSettingsItemList(); // 설정 화면 이동 시 리스트 확인
+          if (viewId === 'view-settings') renderSettingsItemList();
         }
         closeSidebar();
       }
@@ -478,6 +475,61 @@
        * 원재료 관련 함수
        * ========================
        */
+      
+      // [NEW] 원재료 등록 모달 열기 (신규 모드)
+      function openMaterialModal() {
+        document.getElementById('form-material').reset();
+        document.getElementById('material-rowIndex').value = ""; // ID 초기화 (신규)
+        document.getElementById('material-modal-title').innerText = "원재료 입출고 등록";
+        document.getElementById('btn-save-material').innerText = "저장하기";
+        
+        // 날짜 오늘로 리셋
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('material-date').value = today;
+        
+        openModal('modal-material');
+      }
+
+      // [NEW] 원재료 수정 모달 열기 (수정 모드)
+      function openEditMaterialModal(id) {
+        // 캐시에서 데이터 찾기
+        const itemData = cachedMaterials.history.find(h => h.id == id);
+        if (!itemData) {
+          alert("데이터를 찾을 수 없습니다.");
+          return;
+        }
+
+        // 폼에 값 채우기
+        document.getElementById('material-rowIndex').value = itemData.id;
+        document.getElementById('material-date').value = itemData.date;
+        document.getElementById('input-material-item').value = itemData.item;
+        document.getElementById('material-type').value = itemData.type;
+        document.getElementById('material-qty').value = Math.abs(itemData.qty);
+        document.getElementById('material-lot').value = itemData.lot;
+        document.getElementById('material-desc').value = itemData.desc;
+
+        // UI 변경
+        document.getElementById('material-modal-title').innerText = "원재료 내역 수정";
+        document.getElementById('btn-save-material').innerText = "수정 완료";
+        
+        openModal('modal-material');
+      }
+
+      // [NEW] 원재료 삭제 로직
+      function deleteRawMaterial(id) {
+        if(!confirm("정말 이 내역을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
+        
+        // UI 즉시 반영을 위해 로딩 표시 등을 할 수 있으나 여기선 심플하게 처리
+        google.script.run
+          .withSuccessHandler((res) => {
+             alert(res);
+             closeModal('modal-material-detail'); // 상세창 닫기
+             loadMaterials(); // 목록 새로고침
+          })
+          .withFailureHandler(err => alert("삭제 실패: " + err.message))
+          .deleteRawMaterial(id);
+      }
+
       function loadMaterials() {
         const listEl = document.getElementById('material-list');
         const summaryEl = document.getElementById('material-summary');
@@ -493,10 +545,6 @@
         updateMainView();
       }
 
-      /**
-       * [메인 화면 업데이트]
-       * 날짜 필터 + 재고 0 숨기기 토글 적용
-       */
       function updateMainView() {
         if (!cachedMaterials || !cachedMaterials.history) return;
 
@@ -504,12 +552,10 @@
         const endStr = document.getElementById('main-date-end').value;
         const hideZero = document.getElementById('toggle-main-zero').checked;
 
-        // 1. 날짜 필터링
         const filteredHistory = cachedMaterials.history.filter(h => {
            return h.date >= startStr && h.date <= endStr;
         });
 
-        // 2. 재고(수량) 집계 재계산
         const stockMap = {};
         filteredHistory.forEach(item => {
            const qty = item.type === '입고' ? item.qty : -item.qty;
@@ -522,7 +568,6 @@
           total: stockMap[key]
         }));
 
-        // 3. [NEW] 재고 0 숨기기 필터
         if (hideZero) {
           computedSummary = computedSummary.filter(item => item.total !== 0);
         }
@@ -609,22 +654,16 @@
         openModal('modal-material-detail');
       }
 
-      /**
-       * [상세 화면 업데이트]
-       * 날짜 필터 + 로트 칩 렌더링 + 재고 0 숨기기
-       */
       function updateDetailView() {
         const ctx = currentDetailContext;
         const startStr = document.getElementById('detail-date-start').value;
         const endStr = document.getElementById('detail-date-end').value;
         const hideZero = document.getElementById('toggle-detail-zero').checked;
 
-        // 1. 날짜 필터링
         const dateFilteredHistory = ctx.rawHistory.filter(h => {
            return h.date >= startStr && h.date <= endStr;
         });
 
-        // 2. 로트별 집계
         const lotSummary = {};
         let totalQty = 0;
         
@@ -637,7 +676,6 @@
           lotSummary[lotKey] += qty;
         });
 
-        // 3. 최종 리스트 필터링
         let finalDisplayList = dateFilteredHistory;
         if (ctx.selectedLot !== 'ALL') {
           finalDisplayList = finalDisplayList.filter(h => (h.lot || 'Lot 없음') === ctx.selectedLot);
@@ -702,6 +740,7 @@
           const qtySign = isInput ? '+' : '-';
           const lotHtml = item.lot ? `<span class="bg-gray-100 text-gray-500 px-1 rounded ml-1 text-[10px]">Lot: ${item.lot}</span>` : '';
 
+          // [UPDATED] 수정/삭제 버튼 추가
           html += `
             <div class="bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center shadow-sm">
               <div>
@@ -712,8 +751,18 @@
                 </div>
                 <div class="text-xs text-gray-500 mt-0.5">${item.desc || '-'}</div>
               </div>
-              <div class="text-right">
-                <div class="font-bold text-gray-700 text-lg ${isInput ? 'text-blue-600' : 'text-red-600'}">${qtySign}${item.qty}</div>
+              <div class="flex items-center space-x-3">
+                <div class="text-right mr-2">
+                  <div class="font-bold text-gray-700 text-lg ${isInput ? 'text-blue-600' : 'text-red-600'}">${qtySign}${item.qty}</div>
+                </div>
+                <div class="flex space-x-1">
+                   <button onclick="openEditMaterialModal(${item.id})" class="text-gray-400 hover:text-blue-500 p-1 rounded-full hover:bg-blue-50 transition-colors">
+                     <span class="material-icons text-lg">edit</span>
+                   </button>
+                   <button onclick="deleteRawMaterial(${item.id})" class="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors">
+                     <span class="material-icons text-lg">delete</span>
+                   </button>
+                </div>
               </div>
             </div>
           `;
@@ -724,7 +773,12 @@
       function submitMaterial(e) {
         e.preventDefault();
         const btn = document.getElementById('btn-save-material');
-        handleFormSubmit(e, btn, 'addMaterial', 'modal-material', loadMaterials);
+        const rowIndex = document.getElementById('material-rowIndex').value;
+        
+        // serverFunction 결정 (값이 있으면 수정, 없으면 등록)
+        const serverFuncName = rowIndex ? 'editRawMaterial' : 'addMaterial';
+        
+        handleFormSubmit(e, btn, serverFuncName, 'modal-material', loadMaterials);
       }
 
       function loadProduction() {
@@ -786,9 +840,14 @@
             reloadFunc(); 
             btn.disabled = false;
             btn.innerText = originalText;
+            
+            // 만약 상세 팝업이 열려있다면 닫기 (데이터 갱신 필요하므로)
+            if(serverFuncName.includes('RawMaterial')) {
+               closeModal('modal-material-detail');
+            }
           })
           .withFailureHandler(err => {
-            alert("저장 실패: " + err.message);
+            alert("처리 실패: " + err.message);
             btn.disabled = false;
             btn.innerText = originalText;
           })
