@@ -1,0 +1,537 @@
+<script>
+  let cachedMaterials = null; 
+  let cachedRawMaterialItems = []; 
+  let currentDetailContext = { item: null, rawHistory: [], selectedLot: 'ALL' };
+  
+  // [NEW] 설정 화면 필터 상태 (기본값: 사용)
+  let currentSettingsFilter = '사용';
+
+  window.onload = function() {
+    google.script.run.withSuccessHandler(initApp).withFailureHandler(console.error).getInitialData();
+    setInitialDates(); 
+  };
+
+  function setInitialDates() {
+      const today = new Date();
+      const lastYear = new Date();
+      lastYear.setFullYear(today.getFullYear() - 1);
+      
+      const toDateString = (date) => date.toISOString().split('T')[0];
+      const todayStr = toDateString(today);
+      const lastYearStr = toDateString(lastYear);
+
+      // 등록 폼은 오늘 날짜
+      document.querySelectorAll('input[name="date"]').forEach(el => el.value = todayStr);
+      
+      // 조회 필터는 작년부터
+      const startEl = document.getElementById('main-date-start');
+      const endEl = document.getElementById('main-date-end');
+      if(startEl && endEl) {
+        startEl.value = lastYearStr;
+        endEl.value = todayStr;
+      }
+  }
+
+  function initApp(data) {
+    document.getElementById('header-company-name').innerText = data.companyName;
+    document.getElementById('setting-email').innerText = data.currentUser;
+    
+    cachedRawMaterialItems = data.rawMaterials || [];
+    updateMaterialDropdown(); 
+    // 설정화면 로딩 시 기본 필터(사용) 적용
+    filterSettingsItems(currentSettingsFilter); 
+  }
+
+  function updateMaterialDropdown() {
+    const select = document.getElementById('input-material-item');
+    if (!select) return;
+
+    select.innerHTML = '<option value="" disabled selected>선택하세요</option>';
+    
+    // [UPDATED] 드롭다운에는 '사용' 상태인 품목만 표시 (UX 개선)
+    const activeItems = cachedRawMaterialItems.filter(item => item.status === '사용');
+
+    if (activeItems.length === 0) {
+        const opt = document.createElement('option');
+        opt.disabled = true;
+        opt.text = "(설정에서 품목을 먼저 등록해주세요)";
+        select.add(opt);
+    } else {
+        activeItems.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.name;
+          opt.text = `${item.name} (${item.unit})`;
+          select.add(opt);
+        });
+    }
+  }
+
+  // [NEW] 설정화면 품목 필터링 함수
+  function filterSettingsItems(filterType) {
+    currentSettingsFilter = filterType;
+    
+    // 버튼 스타일 업데이트
+    const btns = {
+        'ALL': document.getElementById('filter-btn-all'),
+        '사용': document.getElementById('filter-btn-active'),
+        '미사용': document.getElementById('filter-btn-inactive')
+    };
+    
+    Object.keys(btns).forEach(key => {
+        if(btns[key]) {
+            if (key === filterType) {
+                btns[key].className = "flex-1 text-xs font-bold py-1.5 rounded-md transition-all bg-white shadow text-gray-800";
+            } else {
+                btns[key].className = "flex-1 text-xs font-bold py-1.5 rounded-md transition-all text-gray-500 hover:text-gray-800";
+            }
+        }
+    });
+
+    renderSettingsItemList();
+  }
+
+  function renderSettingsItemList() {
+    const container = document.getElementById('settings-material-list');
+    if (!container) return;
+
+    // 현재 필터에 맞춰 데이터 필터링
+    let displayItems = cachedRawMaterialItems;
+    if (currentSettingsFilter !== 'ALL') {
+        displayItems = cachedRawMaterialItems.filter(item => item.status === currentSettingsFilter);
+    }
+
+    if (displayItems.length === 0) {
+      container.innerHTML = '<div class="text-center text-gray-400 text-xs py-4 border border-dashed rounded-lg">해당되는 원재료가 없습니다.</div>';
+      return;
+    }
+
+    let html = '';
+    displayItems.forEach(item => {
+      // 상태에 따른 배지 색상
+      const statusBadge = item.status === '미사용' 
+        ? '<span class="text-[10px] text-red-500 bg-red-50 px-1.5 py-0.5 rounded ml-2">미사용</span>' 
+        : '<span class="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded ml-2">사용</span>';
+
+      html += `
+        <div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+          <div class="flex items-center">
+            <span class="text-sm font-bold text-gray-700">${item.name}</span>
+            ${statusBadge}
+          </div>
+          <span class="text-xs text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">${item.unit}</span>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function submitItem(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-item');
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = '저장 중...';
+
+    const form = e.target;
+    const formData = {};
+    new FormData(form).forEach((value, key) => formData[key] = value);
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        alert(res);
+        form.reset();
+        closeModal('modal-setting-item');
+        
+        // [UPDATED] 신규 추가 시 status: '사용' 기본값 부여
+        cachedRawMaterialItems.push({ name: formData.itemName, unit: formData.unit, status: '사용' });
+        
+        updateMaterialDropdown();
+        // 현재 필터 상태 유지하며 리스트 갱신
+        filterSettingsItems(currentSettingsFilter);
+        
+        btn.disabled = false;
+        btn.innerText = originalText;
+      })
+      .withFailureHandler(err => {
+        alert("저장 실패: " + err.message);
+        btn.disabled = false;
+        btn.innerText = originalText;
+      })
+      .addItem(formData);
+  }
+
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar.classList.contains('sidebar-closed')) {
+      sidebar.classList.remove('sidebar-closed');
+      sidebar.classList.add('sidebar-open');
+      overlay.classList.remove('hidden');
+    } else { closeSidebar(); }
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('sidebar-open');
+    document.getElementById('sidebar').classList.add('sidebar-closed');
+    document.getElementById('sidebar-overlay').classList.add('hidden');
+  }
+
+  function navigateTo(viewId) {
+    document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
+    const target = document.getElementById(viewId);
+    if (target) {
+      target.classList.remove('hidden');
+      if (viewId === 'view-materials') loadMaterials();
+      if (viewId === 'view-production') loadProduction();
+      if (viewId === 'view-settings') {
+          // 설정 화면 진입 시 필터에 맞게 렌더링
+          filterSettingsItems(currentSettingsFilter);
+      }
+    }
+    closeSidebar();
+  }
+
+  function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+  function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+  /**
+   * ========================
+   * 원재료 관련 함수
+   * ========================
+   */
+  
+  // [NEW] 원재료 등록 모달 열기 (신규 모드)
+  function openMaterialModal() {
+    document.getElementById('form-material').reset();
+    document.getElementById('material-rowIndex').value = ""; // ID 초기화 (신규)
+    document.getElementById('material-modal-title').innerText = "원재료 입출고 등록";
+    document.getElementById('btn-save-material').innerText = "저장하기";
+    
+    // 날짜 오늘로 리셋
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('material-date').value = today;
+    
+    openModal('modal-material');
+  }
+
+  // [NEW] 원재료 수정 모달 열기 (수정 모드)
+  function openEditMaterialModal(id) {
+    // 캐시에서 데이터 찾기
+    const itemData = cachedMaterials.history.find(h => h.id == id);
+    if (!itemData) {
+      alert("데이터를 찾을 수 없습니다.");
+      return;
+    }
+
+    // 폼에 값 채우기
+    document.getElementById('material-rowIndex').value = itemData.id;
+    document.getElementById('material-date').value = itemData.date;
+    document.getElementById('input-material-item').value = itemData.item;
+    document.getElementById('material-type').value = itemData.type;
+    document.getElementById('material-qty').value = Math.abs(itemData.qty);
+    document.getElementById('material-lot').value = itemData.lot;
+    document.getElementById('material-desc').value = itemData.desc;
+
+    // UI 변경
+    document.getElementById('material-modal-title').innerText = "원재료 내역 수정";
+    document.getElementById('btn-save-material').innerText = "수정 완료";
+    
+    openModal('modal-material');
+  }
+
+  // [NEW] 원재료 삭제 로직
+  function deleteRawMaterial(id) {
+    if(!confirm("정말 이 내역을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) return;
+    
+    // UI 즉시 반영을 위해 로딩 표시 등을 할 수 있으나 여기선 심플하게 처리
+    google.script.run
+      .withSuccessHandler((res) => {
+          alert(res);
+          closeModal('modal-material-detail'); // 상세창 닫기
+          loadMaterials(); // 목록 새로고침
+      })
+      .withFailureHandler(err => alert("삭제 실패: " + err.message))
+      .deleteRawMaterial(id);
+  }
+
+  function loadMaterials() {
+    const listEl = document.getElementById('material-list');
+    const summaryEl = document.getElementById('material-summary');
+    
+    listEl.innerHTML = '<div class="text-center py-10 text-gray-400"><div class="loader mx-auto mb-2"></div><p class="text-xs">내역 로딩 중...</p></div>';
+    summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed"><div class="loader mr-2" style="width:16px;height:16px;"></div>재고 계산 중...</div>';
+    
+    google.script.run.withSuccessHandler(onMaterialsLoaded).getMaterials();
+  }
+
+  function onMaterialsLoaded(data) {
+    cachedMaterials = data;
+    updateMainView();
+  }
+
+  function updateMainView() {
+    if (!cachedMaterials || !cachedMaterials.history) return;
+
+    const startStr = document.getElementById('main-date-start').value;
+    const endStr = document.getElementById('main-date-end').value;
+    const hideZero = document.getElementById('toggle-main-zero').checked;
+
+    const filteredHistory = cachedMaterials.history.filter(h => {
+        return h.date >= startStr && h.date <= endStr;
+    });
+
+    const stockMap = {};
+    filteredHistory.forEach(item => {
+        const qty = item.type === '입고' ? item.qty : -item.qty;
+        if(!stockMap[item.item]) stockMap[item.item] = 0;
+        stockMap[item.item] += qty;
+    });
+    
+    let computedSummary = Object.keys(stockMap).map(key => ({
+      item: key,
+      total: stockMap[key]
+    }));
+
+    if (hideZero) {
+      computedSummary = computedSummary.filter(item => item.total !== 0);
+    }
+    
+    // [UPDATED] 원재료명 가나다순(오름차순) 정렬 추가
+    computedSummary.sort((a, b) => a.item.localeCompare(b.item));
+
+    renderMainSummary(computedSummary);
+    renderMainList(filteredHistory);
+  }
+
+  function renderMainSummary(summaryData) {
+    const summaryEl = document.getElementById('material-summary');
+    
+    if (!summaryData || summaryData.length === 0) {
+        summaryEl.innerHTML = '<div class="flex-shrink-0 w-full h-20 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-xs border border-dashed">표시할 데이터가 없습니다.</div>';
+        return;
+    }
+
+    let summaryHtml = '';
+    summaryData.forEach(item => {
+      const stockClass = item.total <= 0 ? 'text-red-500 bg-red-50 border-red-100' : 'text-blue-600 bg-blue-50 border-blue-100';
+      summaryHtml += `
+        <div onclick="openMaterialDetail('${item.item}')" class="flex-shrink-0 w-32 bg-white rounded-xl border p-3 flex flex-col justify-between shadow-sm snap-center cursor-pointer hover:border-orange-300 hover:shadow-md transition-all active:scale-95">
+          <span class="text-xs text-gray-500 font-bold truncate">${item.item}</span>
+          <div class="text-right">
+            <span class="text-lg font-bold ${stockClass} px-2 py-1 rounded-md inline-block">${item.total}</span>
+          </div>
+        </div>
+      `;
+    });
+    summaryEl.innerHTML = summaryHtml;
+  }
+
+  function renderMainList(historyData) {
+    const listEl = document.getElementById('material-list');
+    
+    if (!historyData || historyData.length === 0) {
+      listEl.innerHTML = '<div class="text-center py-10 text-gray-300 border border-dashed rounded-xl"><span class="material-icons text-4xl mb-2">inbox</span><p class="text-sm">기간 내 내역이 없습니다.</p></div>';
+      return;
+    }
+    
+    let html = '';
+    historyData.forEach(item => {
+      const typeClass = item.type === '입고' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600';
+      const qtySign = item.type === '입고' ? '+' : '-';
+      const lotHtml = item.lot ? `<span class="text-[10px] bg-gray-100 text-gray-500 px-1 rounded ml-1">Lot: ${item.lot}</span>` : '';
+
+      html += `
+        <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
+          <div>
+            <div class="text-xs text-gray-400 mb-1">${item.date}</div>
+            <div class="font-bold text-gray-800 text-lg flex items-center">
+              ${item.item}
+              ${lotHtml}
+            </div>
+            <div class="text-xs text-gray-500">${item.desc || '-'}</div>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-bold px-2 py-1 rounded ${typeClass} mb-1 inline-block">${item.type}</span>
+            <div class="font-bold text-gray-700 text-lg">${qtySign}${item.qty}</div>
+          </div>
+        </div>`;
+    });
+    listEl.innerHTML = html;
+  }
+
+  function openMaterialDetail(itemName) {
+    if (!cachedMaterials || !cachedMaterials.history) return;
+
+    const allHistory = cachedMaterials.history.filter(h => h.item === itemName);
+    
+    const mainStart = document.getElementById('main-date-start').value;
+    const mainEnd = document.getElementById('main-date-end').value;
+    
+    document.getElementById('detail-date-start').value = mainStart;
+    document.getElementById('detail-date-end').value = mainEnd;
+
+    currentDetailContext = {
+      item: itemName,
+      rawHistory: allHistory,
+      selectedLot: 'ALL'
+    };
+
+    document.getElementById('detail-title').innerText = itemName;
+    updateDetailView();
+    openModal('modal-material-detail');
+  }
+
+  function updateDetailView() {
+    const ctx = currentDetailContext;
+    const startStr = document.getElementById('detail-date-start').value;
+    const endStr = document.getElementById('detail-date-end').value;
+    const hideZero = document.getElementById('toggle-detail-zero').checked;
+
+    const dateFilteredHistory = ctx.rawHistory.filter(h => {
+        return h.date >= startStr && h.date <= endStr;
+    });
+
+    const lotSummary = {};
+    let totalQty = 0;
+    
+    dateFilteredHistory.forEach(h => {
+      const qty = h.type === '입고' ? h.qty : -h.qty;
+      totalQty += qty;
+      
+      const lotKey = h.lot ? h.lot : 'Lot 없음';
+      if (!lotSummary[lotKey]) lotSummary[lotKey] = 0;
+      lotSummary[lotKey] += qty;
+    });
+
+    let finalDisplayList = dateFilteredHistory;
+    if (ctx.selectedLot !== 'ALL') {
+      finalDisplayList = finalDisplayList.filter(h => (h.lot || 'Lot 없음') === ctx.selectedLot);
+    }
+
+    renderDetailLotChips(lotSummary, totalQty, hideZero);
+    renderDetailList(finalDisplayList);
+  }
+
+  function renderDetailLotChips(lotSummary, totalQty, hideZero) {
+    const container = document.getElementById('detail-lot-chips');
+    const ctx = currentDetailContext;
+    
+    const isAllSelected = ctx.selectedLot === 'ALL';
+    const allClass = isAllSelected 
+      ? 'bg-orange-500 text-white shadow ring-2 ring-orange-200' 
+      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50';
+
+    let html = `
+      <button onclick="filterDetailByLot('ALL')" class="flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95 ${allClass} flex items-center space-x-2">
+          <span>전체</span>
+          <span class="bg-black bg-opacity-10 px-1.5 py-0.5 rounded-full text-[10px]">${totalQty}</span>
+      </button>
+    `;
+
+    Object.keys(lotSummary).forEach(lotKey => {
+        const qty = lotSummary[lotKey];
+        if (hideZero && qty === 0 && ctx.selectedLot !== lotKey) return;
+
+        const isSelected = ctx.selectedLot === lotKey;
+        const chipClass = isSelected 
+          ? 'bg-orange-500 text-white shadow ring-2 ring-orange-200' 
+          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50';
+        
+        html += `
+          <button onclick="filterDetailByLot('${lotKey}')" class="flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95 ${chipClass} flex items-center space-x-2">
+            <span class="truncate max-w-[80px]">${lotKey}</span>
+            <span class="bg-black bg-opacity-10 px-1.5 py-0.5 rounded-full text-[10px]">${qty}</span>
+          </button>
+        `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function filterDetailByLot(lotKey) {
+    currentDetailContext.selectedLot = lotKey;
+    updateDetailView();
+  }
+
+  function renderDetailList(displayList) {
+    const container = document.getElementById('detail-content');
+    
+    if (displayList.length === 0) {
+      container.innerHTML = '<div class="text-center text-gray-400 py-10">해당 기간에 내역이 없습니다.</div>';
+      return;
+    }
+
+    let html = '';
+    displayList.forEach(item => {
+      const isInput = item.type === '입고';
+      const qtySign = isInput ? '+' : '-';
+      const lotHtml = item.lot ? `<span class="bg-gray-100 text-gray-500 px-1 rounded ml-1 text-[10px]">Lot: ${item.lot}</span>` : '';
+
+      // [UPDATED] 수정/삭제 버튼 추가
+      html += `
+        <div class="bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center shadow-sm">
+          <div>
+            <div class="text-xs text-gray-400 mb-0.5">${item.date}</div>
+            <div class="font-bold text-gray-800 text-sm flex items-center">
+                ${item.type}
+                ${lotHtml}
+            </div>
+            <div class="text-xs text-gray-500 mt-0.5">${item.desc || '-'}</div>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="text-right mr-2">
+              <div class="font-bold text-gray-700 text-lg ${isInput ? 'text-blue-600' : 'text-red-600'}">${qtySign}${item.qty}</div>
+            </div>
+            <div class="flex space-x-1">
+                <button onclick="openEditMaterialModal(${item.id})" class="text-gray-400 hover:text-blue-500 p-1 rounded-full hover:bg-blue-50 transition-colors">
+                  <span class="material-icons text-lg">edit</span>
+                </button>
+                <button onclick="deleteRawMaterial(${item.id})" class="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors">
+                  <span class="material-icons text-lg">delete</span>
+                </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function submitProduction(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-production');
+    handleFormSubmit(e, btn, 'addProduction', 'modal-production', loadProduction);
+  }
+
+  function handleFormSubmit(e, btn, serverFuncName, modalId, reloadFunc) {
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="loader mr-2" style="width:16px;height:16px;border-width:2px;"></div> 저장 중...';
+
+    const form = e.target;
+    const formData = {};
+    new FormData(form).forEach((value, key) => formData[key] = value);
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        alert(res);
+        form.reset();
+        setInitialDates(); 
+        closeModal(modalId);
+        reloadFunc(); 
+        btn.disabled = false;
+        btn.innerText = originalText;
+        
+        // 만약 상세 팝업이 열려있다면 닫기 (데이터 갱신 필요하므로)
+        if(serverFuncName.includes('RawMaterial')) {
+            closeModal('modal-material-detail');
+        }
+      })
+      .withFailureHandler(err => {
+        alert("처리 실패: " + err.message);
+        btn.disabled = false;
+        btn.innerText = originalText;
+      })
+      [serverFuncName](formData);
+  }
+</script>

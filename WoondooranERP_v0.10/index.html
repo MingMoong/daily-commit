@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <?!= include('stylesheet'); ?>
+  </head>
+  <body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- 1. Header -->
+    <header class="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 shadow-sm z-20 flex-shrink-0">
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleSidebar()" class="text-gray-600 hover:text-blue-600 active:scale-95 transition-transform p-1">
+          <span class="material-icons text-2xl">menu</span>
+        </button>
+        <h1 class="text-lg font-bold text-gray-800 tracking-tight">Woondooran ERP</h1>
+      </div>
+      <div class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100" id="header-company-name">
+        Loading...
+      </div>
+    </header>
+
+    <!-- 2. Main Content Area -->
+    <main class="flex-grow overflow-y-auto relative p-4" id="main-content">
+      
+      <?!= include('view-dashboard'); ?>
+      <?!= include('view-materials'); ?>
+      <?!= include('view-production'); ?>
+      <?!= include('view-others'); ?>
+      <?!= include('view-settings'); ?>
+
+    </main>
+
+    <!-- Modals (placed at root level for proper z-indexing) -->
+    <?!= include('modal-material'); ?>
+    <?!= include('modal-production'); ?>
+    <?!= include('modal-settings'); ?>
+
+    <!-- 3. Sidebar -->
+    <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden transition-opacity"></div>
+    <nav id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-40 sidebar-transition sidebar-closed flex flex-col">
+      <div class="p-6 border-b border-gray-100 bg-gray-50">
+        <h2 class="text-xl font-bold text-gray-800">Menu</h2>
+        <p class="text-xs text-gray-500 mt-1">ERP Navigation</p>
+      </div>
+      <div class="flex-grow py-4 space-y-1 overflow-y-auto">
+        <button onclick="navigateTo('view-dashboard')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"><span class="material-icons text-gray-400 mr-3 text-xl">dashboard</span><span class="font-medium">대시보드</span></button>
+        <button onclick="navigateTo('view-materials')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"><span class="material-icons text-gray-400 mr-3 text-xl">inventory_2</span><span class="font-medium">원재료수불부</span></button>
+        <button onclick="navigateTo('view-production')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"><span class="material-icons text-gray-400 mr-3 text-xl">factory</span><span class="font-medium">생산일지</span></button>
+        <button onclick="navigateTo('view-semi')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"><span class="material-icons text-gray-400 mr-3 text-xl">category</span><span class="font-medium">반제품수불부</span></button>
+        <button onclick="navigateTo('view-packaging')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"><span class="material-icons text-gray-400 mr-3 text-xl">inventory</span><span class="font-medium">포장일지</span></button>
+        <div class="h-px bg-gray-100 my-2 mx-6"></div>
+        <button onclick="navigateTo('view-settings')" class="w-full flex items-center px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"><span class="material-icons text-gray-400 mr-3 text-xl">settings</span><span class="font-medium">설정</span></button>
+      </div>
+      <div class="p-4 text-xs text-center text-gray-400 border-t border-gray-100">&copy; Woondooran ERP</div>
+    </nav>
+
+    <?!= include('javascript'); ?>
+  </body>
+</html>

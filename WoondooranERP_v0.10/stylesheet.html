@@ -1,0 +1,22 @@
+<style>
+  /* 화면 전환 애니메이션 */
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  
+  /* 사이드바 애니메이션 */
+  .sidebar-transition { transition: transform 0.3s ease-in-out; }
+  .sidebar-closed { transform: translateX(-100%); }
+  .sidebar-open { transform: translateX(0); }
+
+  /* 로딩 스피너 */
+  .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  /* 가로 스크롤 숨기기 */
+  .hide-scroll::-webkit-scrollbar { display: none; }
+  .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* 토글 스위치 애니메이션 */
+  input:checked ~ .dot { transform: translateX(100%); background-color: #fff; }
+  input:checked ~ .block { background-color: #f97316; } /* Orange-500 */
+</style>

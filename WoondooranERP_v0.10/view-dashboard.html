@@ -1,0 +1,21 @@
+<div id="view-dashboard" class="view-section fade-in space-y-4">
+  <div class="bg-blue-600 text-white p-6 rounded-2xl shadow-lg">
+    <h2 class="text-2xl font-bold mb-1">Welcome</h2>
+    <p class="text-blue-100 text-sm">ERP 시스템에 오신 것을 환영합니다.</p>
+    <div class="mt-4 flex items-center text-xs bg-blue-700 bg-opacity-50 w-fit px-3 py-1 rounded-full">
+      <span class="material-icons text-sm mr-1">check_circle</span>
+      시스템 정상 가동 중
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+      <button onclick="navigateTo('view-materials')" class="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center justify-center space-y-2 active:bg-gray-50">
+        <span class="material-icons text-orange-500">inventory_2</span>
+        <span class="text-xs font-bold text-gray-600">원재료</span>
+      </button>
+      <button onclick="navigateTo('view-production')" class="bg-white p-4 rounded-xl border shadow-sm flex flex-col items-center justify-center space-y-2 active:bg-gray-50">
+        <span class="material-icons text-blue-500">factory</span>
+        <span class="text-xs font-bold text-gray-600">생산</span>
+      </button>
+  </div>
+</div>
