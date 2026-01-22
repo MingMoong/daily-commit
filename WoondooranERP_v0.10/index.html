@@ -7,7 +7,8 @@
     <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <?!= include('stylesheet'); ?>
-  </head>
+  <link rel="stylesheet" href="/index.css">
+</head>
   <body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden">
 
     <!-- 1. Header -->
@@ -38,6 +39,8 @@
     <?!= include('modal-material'); ?>
     <?!= include('modal-production'); ?>
     <?!= include('modal-settings'); ?>
+    <!-- [NEW] Custom Alert Modal -->
+    <?!= include('modal-alert'); ?>
 
     <!-- 3. Sidebar -->
     <div id="sidebar-overlay" onclick="closeSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden transition-opacity"></div>
@@ -58,6 +61,19 @@
       <div class="p-4 text-xs text-center text-gray-400 border-t border-gray-100">&copy; Woondooran ERP</div>
     </nav>
 
+    <!-- Debug Console -->
+    <div id="debug-console" class="fixed bottom-0 left-0 w-full h-48 bg-gray-900 text-green-400 font-mono text-xs p-4 overflow-y-auto z-[100] hidden opacity-95 shadow-inner border-t-2 border-green-700">
+      <div class="flex justify-between items-center border-b border-gray-700 pb-2 mb-2 sticky top-0 bg-gray-900">
+        <span class="font-bold text-yellow-400">⚠️ System Logs</span>
+        <div class="space-x-2">
+            <button onclick="document.getElementById('debug-logs').innerHTML=''" class="text-gray-400 hover:text-white border border-gray-600 px-2 rounded">Clear</button>
+            <button onclick="document.getElementById('debug-console').classList.add('hidden')" class="text-red-500 font-bold border border-red-500 px-2 rounded hover:bg-red-900">CLOSE</button>
+        </div>
+      </div>
+      <div id="debug-logs" class="space-y-1"></div>
+    </div>
+
     <?!= include('javascript'); ?>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>

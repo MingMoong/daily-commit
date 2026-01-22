@@ -5,5 +5,6 @@ const SHEETS = {
   SEMI_FINISHED: '반제품수불부',
   PACKAGING: '포장일지',
   SETTINGS: '설정',
-  ITEMS: '품목관리'
+  ITEMS: '품목관리',
+  LOT_SETTINGS: '로트관리' // [NEW] 로트번호 설정 시트
 };

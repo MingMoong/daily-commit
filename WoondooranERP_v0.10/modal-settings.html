@@ -1,34 +1,96 @@
-<!-- [NEW 모달] 품목(원재료) 등록 -->
+<!-- [기존] 품목(원재료) 등록/수정 모달 -->
 <div id="modal-setting-item" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
   <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 fade-in shadow-2xl">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-bold text-gray-800">원재료 품목 등록</h3>
+      <h3 class="text-lg font-bold text-gray-800" id="item-modal-title">원재료 품목 등록</h3>
       <button onclick="closeModal('modal-setting-item')" class="text-gray-400 hover:text-gray-600"><span class="material-icons">close</span></button>
     </div>
-    <form onsubmit="submitItem(event)" class="space-y-4">
-      <input type="hidden" name="category" value="원재료"> <!-- 카테고리 고정 -->
-      
+    <form onsubmit="submitItem(event)" class="space-y-4" id="form-setting-item">
+      <input type="hidden" name="category" value="원재료"> 
+      <input type="hidden" name="originalItemName" id="item-original-name">
+
       <div>
         <label class="block text-xs font-bold text-gray-500 mb-1">원재료명</label>
-        <input type="text" name="itemName" placeholder="예: 천일염" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-gray-800">
+        <input type="text" name="itemName" id="item-name" placeholder="예: 천일염" required class="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:border-gray-800">
+        <p class="text-[10px] text-gray-400 mt-1 hidden" id="item-edit-warning">⚠️ 이름 수정 시 과거 입출고 내역도 모두 변경됩니다.</p>
       </div>
       
-      <div>
-        <label class="block text-xs font-bold text-gray-500 mb-1">단위</label>
-        <select name="unit" required class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-gray-800">
-          <option value="kg">kg</option>
-          <option value="g">g</option>
-          <option value="개">개</option>
-          <option value="L">L</option>
-          <option value="ml">ml</option>
-          <option value="포">포</option>
-          <option value="box">box</option>
-        </select>
+      <div class="flex space-x-2">
+        <div class="w-1/2">
+            <label class="block text-xs font-bold text-gray-500 mb-1">단위</label>
+            <select name="unit" id="item-unit" required class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-gray-800">
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="개">개</option>
+              <option value="L">L</option>
+              <option value="ml">ml</option>
+              <option value="포">포</option>
+              <option value="box">box</option>
+            </select>
+        </div>
+        <div class="w-1/2">
+            <label class="block text-xs font-bold text-gray-500 mb-1">상태</label>
+            <select name="status" id="item-status" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white outline-none focus:border-gray-800">
+              <option value="사용">사용</option>
+              <option value="미사용">미사용</option>
+            </select>
+        </div>
       </div>
       
       <button type="submit" id="btn-save-item" class="w-full bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors shadow-md mt-2 flex justify-center items-center">
         등록하기
       </button>
+    </form>
+  </div>
+</div>
+
+<!-- [NEW] 로트번호 식별자 수정/등록 모달 -->
+<div id="modal-setting-lot" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-end sm:items-center justify-center">
+  <div class="bg-white w-full sm:w-80 rounded-t-2xl sm:rounded-2xl p-6 fade-in shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-bold text-gray-800" id="lot-modal-title">식별자 범위 수정</h3>
+      <button onclick="closeModal('modal-setting-lot')" class="text-gray-400 hover:text-gray-600"><span class="material-icons">close</span></button>
+    </div>
+    
+    <form onsubmit="submitLotSetting(event)" class="space-y-4" id="form-setting-lot">
+      <!-- Edit Mode: Hidden ID -->
+      <input type="hidden" name="lotCategory" id="lot-category-hidden">
+      
+      <div class="bg-gray-100 p-3 rounded-lg text-center">
+        <label class="block text-xs text-gray-500 mb-1">카테고리</label>
+        
+        <!-- Edit Mode: Display Text -->
+        <span class="text-lg font-bold text-gray-800 block" id="lot-category-display">원재료</span>
+        
+        <!-- Add Mode: Input -->
+        <input type="text" name="lotCategoryInput" id="lot-category-input" class="w-full bg-white border border-gray-300 rounded p-1 text-center text-sm hidden outline-none focus:border-gray-800" placeholder="예: 시제품">
+      </div>
+
+      <div class="flex space-x-2 items-center">
+        <div class="flex-1">
+          <label class="block text-xs font-bold text-gray-500 mb-1">시작 번호</label>
+          <input type="number" name="lotStart" id="lot-start" required class="w-full border border-gray-300 rounded-lg p-2 text-center text-sm outline-none focus:border-gray-800">
+        </div>
+        <span class="text-gray-400">~</span>
+        <div class="flex-1">
+          <label class="block text-xs font-bold text-gray-500 mb-1">종료 번호</label>
+          <input type="number" name="lotEnd" id="lot-end" required class="w-full border border-gray-300 rounded-lg p-2 text-center text-sm outline-none focus:border-gray-800">
+        </div>
+      </div>
+      
+      <p class="text-[10px] text-gray-400 bg-yellow-50 text-yellow-700 p-2 rounded">
+        ⚠️ 범위 수정 시 식별자 중복에 주의하세요.
+      </p>
+
+      <!-- [UPDATED] 버튼 영역: 삭제 버튼 추가 -->
+      <div class="flex space-x-2 mt-2">
+          <button type="button" id="btn-delete-lot" onclick="deleteLotCurrent()" class="hidden w-1/3 bg-red-100 text-red-600 font-bold py-3 rounded-xl hover:bg-red-200 transition-colors shadow-sm flex justify-center items-center">
+            삭제
+          </button>
+          <button type="submit" id="btn-save-lot" class="flex-1 bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-black transition-colors shadow-md flex justify-center items-center">
+            수정하기
+          </button>
+      </div>
     </form>
   </div>
 </div>
